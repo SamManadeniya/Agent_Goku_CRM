@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { MessageSquare, User, Clock, Search, Bot, Send, ShieldAlert, ShieldCheck, Edit2, Star, Check, X, Users, Plus, Tag, Settings, ChevronLeft } from 'lucide-react'
+import { MessageSquare, User, Clock, Search, Bot, Send, ShieldAlert, ShieldCheck, Edit2, Star, Check, X, Users, Plus, Tag, Settings, ChevronLeft, Trash2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import parsePhoneNumberFromString from 'libphonenumber-js'
@@ -23,6 +23,7 @@ export default function Inbox({ user }) {
     const [isCreatingGroup, setIsCreatingGroup] = useState(false)
     const [newGroupName, setNewGroupName] = useState('')
     const [selectedMembers, setSelectedMembers] = useState(new Set())
+    const [isViewingGroupMembers, setIsViewingGroupMembers] = useState(false)
 
     // Labels state
     const [labels, setLabels] = useState([])
@@ -554,6 +555,63 @@ export default function Inbox({ user }) {
         alert('Broadcast sent successfully!');
     }
 
+    const handleDeleteChat = async () => {
+        if (!selectedSession) return;
+        if (!window.confirm('Are you sure you want to delete this chat? This will remove all messages and the contact.')) return;
+
+        try {
+            // Delete messages
+            await supabase.from('agent_goku').delete().eq('session_id', selectedSession);
+            // Delete user record
+            await supabase.from('user').delete().eq('mobile', selectedSession);
+
+            setSelectedSession(null);
+            setIsChatOpenOnMobile(false);
+            fetchSessions();
+        } catch (err) {
+            console.error('Error deleting chat:', err);
+            alert('Failed to delete chat.');
+        }
+    }
+
+    const handleDeleteGroup = async () => {
+        if (!selectedGroup) return;
+        if (!window.confirm(`Are you sure you want to delete the group "${selectedGroup.name}"?`)) return;
+
+        try {
+            // Delete group members first
+            await supabase.from('group_members').delete().eq('group_id', selectedGroup.id);
+            // Delete group
+            await supabase.from('groups').delete().eq('id', selectedGroup.id);
+
+            setSelectedGroup(null);
+            setIsChatOpenOnMobile(false);
+            fetchGroups();
+        } catch (err) {
+            console.error('Error deleting group:', err);
+            alert('Failed to delete group.');
+        }
+    }
+
+    const handleRemoveMember = async (sessionId) => {
+        if (!selectedGroup) return;
+        if (!window.confirm('Remove this member from the group?')) return;
+
+        try {
+            await supabase.from('group_members').delete().match({ group_id: selectedGroup.id, session_id: sessionId });
+
+            // Update local state to reflect removal immediately
+            setSelectedGroup(prev => ({
+                ...prev,
+                group_members: prev.group_members.filter(m => m.session_id !== sessionId)
+            }));
+            fetchGroups();
+        } catch (err) {
+            console.error('Error removing member:', err);
+            alert('Failed to remove member.');
+        }
+    }
+
     const formatMessage = (msgData, allMessages = []) => {
         const parsed = parseMessageData(msgData)
 
@@ -970,17 +1028,26 @@ export default function Inbox({ user }) {
                                 </div>
                             </div>
 
-                            {/* Takeover Button */}
-                            <button
-                                onClick={handleTakeover}
-                                className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-200 shadow-sm ${isHumanMode ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-amber-200/50' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/30'}`}
-                            >
-                                {isHumanMode ? (
-                                    <><ShieldCheck size={18} /> Resume AI</>
-                                ) : (
-                                    <><ShieldAlert size={18} /> Take Over Chat</>
-                                )}
-                            </button>
+                            {/* Actions */}
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleDeleteChat}
+                                    className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors shadow-sm border border-red-100"
+                                    title="Delete Chat"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                                <button
+                                    onClick={handleTakeover}
+                                    className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-200 shadow-sm ${isHumanMode ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-amber-200/50' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/30'}`}
+                                >
+                                    {isHumanMode ? (
+                                        <><ShieldCheck size={18} /> Resume AI</>
+                                    ) : (
+                                        <><ShieldAlert size={18} /> Take Over Chat</>
+                                    )}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32 pt-28 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
@@ -1045,6 +1112,21 @@ export default function Inbox({ user }) {
                                     </h2>
                                     <p className="text-sm text-gray-500 font-medium">{selectedGroup.group_members.length} members</p>
                                 </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setIsViewingGroupMembers(true)}
+                                    className="px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors shadow-sm border border-blue-100 flex items-center gap-2"
+                                >
+                                    <Users size={16} /> View Members
+                                </button>
+                                <button
+                                    onClick={handleDeleteGroup}
+                                    className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors shadow-sm border border-red-100"
+                                    title="Delete Group"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
                             </div>
                         </div>
 
@@ -1186,6 +1268,54 @@ export default function Inbox({ user }) {
                                         </div>
                                     ))}
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* View Group Members Modal */}
+            {isViewingGroupMembers && selectedGroup && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
+                        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-800">{selectedGroup.name}</h2>
+                                <p className="text-sm text-gray-500">{selectedGroup.group_members.length} members</p>
+                            </div>
+                            <button onClick={() => setIsViewingGroupMembers(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                        </div>
+                        <div className="p-0 flex-1 overflow-y-auto">
+                            <div className="divide-y divide-gray-100">
+                                {selectedGroup.group_members.map((member) => {
+                                    const sessionData = sessions.find(s => String(s.id) === String(member.session_id));
+                                    const { formatted, Flag } = formatPhoneNumber(member.session_id);
+                                    return (
+                                        <div key={member.session_id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                                    <User size={18} />
+                                                </div>
+                                                <div className="flex flex-col text-left">
+                                                    <span className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                                                        {Flag && <Flag title={formatted} className="w-4 h-3 rounded-sm shadow-sm" />}
+                                                        {sessionData?.contact_name || formatted}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500">{formatted}</span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleRemoveMember(member.session_id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Remove Member"
+                                            >
+                                                <X size={18} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                                {selectedGroup.group_members.length === 0 && (
+                                    <div className="p-8 text-center text-gray-400 text-sm">No members in this group.</div>
+                                )}
                             </div>
                         </div>
                     </div>
