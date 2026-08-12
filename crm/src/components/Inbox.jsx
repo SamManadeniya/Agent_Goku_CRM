@@ -154,6 +154,9 @@ export default function Inbox({ user }) {
     useEffect(() => {
         if (!selectedSession || messages.length === 0) return;
 
+        // Prevent race condition: ensure messages belong to the currently selected session
+        if (String(messages[0]?.session_id) !== String(selectedSession)) return;
+
         const sessionData = sessions.find(s => s.id === selectedSession);
         if (sessionData && !sessionData.contact_name) {
             for (const msg of messages) {
