@@ -24,7 +24,17 @@ export default function Dashboard() {
                 const today = new Date().toDateString()
                 const now = new Date()
                 const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60000)
-                const messagesPerDay = {}
+                
+                const last7Days = []
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date()
+                    d.setDate(d.getDate() - i)
+                    last7Days.push({
+                        date: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+                        messages: 0
+                    })
+                }
+                
                 const sessionLastActive = {}
 
                 data.forEach(row => {
@@ -38,7 +48,10 @@ export default function Dashboard() {
                     }
 
                     const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                    messagesPerDay[dateStr] = (messagesPerDay[dateStr] || 0) + 1
+                    const dayObj = last7Days.find(d => d.date === dateStr)
+                    if (dayObj) {
+                        dayObj.messages++
+                    }
                 })
 
                 Object.values(sessionLastActive).forEach(lastActive => {
@@ -54,11 +67,7 @@ export default function Dashboard() {
                     onlineNow: onlineNowCount
                 })
 
-                const formattedChartData = Object.keys(messagesPerDay)
-                    .map(date => ({ date, messages: messagesPerDay[date] }))
-                    .slice(-7)
-
-                setChartData(formattedChartData)
+                setChartData(last7Days)
             } catch (error) {
                 console.error('Error fetching stats:', error)
             } finally {
