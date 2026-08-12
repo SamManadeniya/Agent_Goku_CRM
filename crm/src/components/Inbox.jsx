@@ -24,6 +24,9 @@ export default function Inbox({ user }) {
     const [newGroupName, setNewGroupName] = useState('')
     const [selectedMembers, setSelectedMembers] = useState(new Set())
     const [isViewingGroupMembers, setIsViewingGroupMembers] = useState(false)
+    const [isAddingMembers, setIsAddingMembers] = useState(false)
+    const [membersToAdd, setMembersToAdd] = useState(new Set())
+    const [memberSearchQuery, setMemberSearchQuery] = useState('')
 
     // Labels state
     const [labels, setLabels] = useState([])
@@ -612,6 +615,33 @@ export default function Inbox({ user }) {
         }
     }
 
+    const handleAddMembers = async () => {
+        if (!selectedGroup || membersToAdd.size === 0) return;
+
+        try {
+            const membersToInsert = Array.from(membersToAdd).map(sessionId => ({
+                group_id: selectedGroup.id,
+                session_id: sessionId
+            }));
+
+            await supabase.from('group_members').insert(membersToInsert);
+
+            setIsAddingMembers(false);
+            setMembersToAdd(new Set());
+            fetchGroups();
+
+            // Optimistically update selectedGroup so the UI updates immediately
+            const newMembers = Array.from(membersToAdd).map(sessionId => ({ session_id: sessionId }));
+            setSelectedGroup(prev => ({
+                ...prev,
+                group_members: [...prev.group_members, ...newMembers]
+            }));
+        } catch (err) {
+            console.error('Error adding members:', err);
+            alert('Failed to add members.');
+        }
+    }
+
     const formatMessage = (msgData, allMessages = []) => {
         const parsed = parseMessageData(msgData)
 
@@ -1115,6 +1145,12 @@ export default function Inbox({ user }) {
                             </div>
                             <div className="flex items-center gap-3">
                                 <button
+                                    onClick={() => setIsAddingMembers(true)}
+                                    className="px-4 py-2 text-sm font-semibold text-green-600 bg-green-50 hover:bg-green-100 rounded-xl transition-colors shadow-sm border border-green-100 flex items-center gap-2"
+                                >
+                                    <Plus size={16} /> Add Member
+                                </button>
+                                <button
                                     onClick={() => setIsViewingGroupMembers(true)}
                                     className="px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors shadow-sm border border-blue-100 flex items-center gap-2"
                                 >
@@ -1282,11 +1318,28 @@ export default function Inbox({ user }) {
                                 <h2 className="text-lg font-bold text-gray-800">{selectedGroup.name}</h2>
                                 <p className="text-sm text-gray-500">{selectedGroup.group_members.length} members</p>
                             </div>
-                            <button onClick={() => setIsViewingGroupMembers(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                            <button onClick={() => { setIsViewingGroupMembers(false); setMemberSearchQuery(''); }} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                        </div>
+                        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input
+                                    type="text"
+                                    placeholder="Search members..."
+                                    value={memberSearchQuery}
+                                    onChange={(e) => setMemberSearchQuery(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                />
+                            </div>
                         </div>
                         <div className="p-0 flex-1 overflow-y-auto">
                             <div className="divide-y divide-gray-100">
-                                {selectedGroup.group_members.map((member) => {
+                                {selectedGroup.group_members.filter(member => {
+                                    const sessionData = sessions.find(s => String(s.id) === String(member.session_id));
+                                    const { formatted } = formatPhoneNumber(member.session_id);
+                                    const searchLower = memberSearchQuery.toLowerCase();
+                                    return (sessionData?.contact_name?.toLowerCase().includes(searchLower) || formatted?.toLowerCase().includes(searchLower) || member.session_id.includes(searchLower));
+                                }).map((member) => {
                                     const sessionData = sessions.find(s => String(s.id) === String(member.session_id));
                                     const { formatted, Flag } = formatPhoneNumber(member.session_id);
                                     return (
@@ -1317,6 +1370,47 @@ export default function Inbox({ user }) {
                                     <div className="p-8 text-center text-gray-400 text-sm">No members in this group.</div>
                                 )}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Add Members Modal */}
+            {isAddingMembers && selectedGroup && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
+                        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-gray-800">Add Members to {selectedGroup.name}</h2>
+                            <button onClick={() => { setIsAddingMembers(false); setMembersToAdd(new Set()); }} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                        </div>
+                        <div className="p-5 flex-1 overflow-y-auto">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Select Members to Add ({membersToAdd.size})</label>
+                                <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-100 rounded-lg p-2">
+                                    {sessions.filter(session => !selectedGroup.group_members.some(m => String(m.session_id) === String(session.id))).map(session => (
+                                        <label key={session.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={membersToAdd.has(session.id)}
+                                                onChange={(e) => {
+                                                    const next = new Set(membersToAdd)
+                                                    if (e.target.checked) next.add(session.id)
+                                                    else next.delete(session.id)
+                                                    setMembersToAdd(next)
+                                                }}
+                                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm text-gray-700">{session.contact_name || formatPhoneNumber(session.id).formatted}</span>
+                                        </label>
+                                    ))}
+                                    {sessions.filter(session => !selectedGroup.group_members.some(m => String(m.session_id) === String(session.id))).length === 0 && (
+                                        <div className="p-4 text-center text-gray-400 text-sm">All available clients are already in this group.</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+                            <button onClick={() => { setIsAddingMembers(false); setMembersToAdd(new Set()); }} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Cancel</button>
+                            <button onClick={handleAddMembers} disabled={membersToAdd.size === 0} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-green-300 rounded-lg transition-colors">Add Members</button>
                         </div>
                     </div>
                 </div>
