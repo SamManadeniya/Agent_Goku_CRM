@@ -280,14 +280,16 @@ export default function Inbox({ user }) {
 
     async function fetchMessages(sessionId) {
         try {
-            const { data, error } = await supabase
-                .from('agent_goku')
-                .select('*')
-                .eq('session_id', sessionId)
-                .order('created_at', { ascending: true })
+            const [res1, res2] = await Promise.all([
+                supabase.from('agent_goku').select('*').eq('session_id', sessionId),
+                supabase.from('agent_goku').select('*').eq('session_id', `"${sessionId}"`)
+            ]);
 
-            if (error) throw error
-            setMessages(data)
+            if (res1.error) throw res1.error;
+            if (res2.error) throw res2.error;
+
+            const mergedData = [...res1.data, ...res2.data].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            setMessages(mergedData);
         } catch (error) {
             console.error('Error fetching messages:', error)
         }
