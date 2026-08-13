@@ -316,12 +316,27 @@ export default function Inbox({ user }) {
 
     const parseMessageData = (msgData) => {
         try {
-            let parsed = msgData
-            if (typeof msgData === 'string') parsed = JSON.parse(msgData)
-            if (typeof parsed === 'string') parsed = JSON.parse(parsed)
-            return parsed
+            let parsed = msgData;
+            if (typeof msgData === 'string') {
+                try {
+                    parsed = JSON.parse(msgData);
+                } catch (e) {
+                    return { type: 'human', content: msgData };
+                }
+            }
+            if (typeof parsed === 'string') {
+                try {
+                    parsed = JSON.parse(parsed);
+                } catch (e) {
+                    return { type: 'human', content: parsed };
+                }
+            }
+            if (typeof parsed !== 'object' || parsed === null) {
+                return { type: 'human', content: String(parsed) };
+            }
+            return parsed;
         } catch (e) {
-            return null
+            return { type: 'human', content: String(msgData) };
         }
     }
 
