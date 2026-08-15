@@ -39,6 +39,11 @@ export default function Inbox({ user }) {
     const [isAssigningLabel, setIsAssigningLabel] = useState(false)
     const [isChatOpenOnMobile, setIsChatOpenOnMobile] = useState(false)
 
+    // Add Contact state
+    const [isAddingContact, setIsAddingContact] = useState(false)
+    const [newContactName, setNewContactName] = useState('')
+    const [newContactNumber, setNewContactNumber] = useState('')
+
     const messagesEndRef = useRef(null)
     const selectedSessionRef = useRef(selectedSession)
 
@@ -170,8 +175,9 @@ export default function Inbox({ user }) {
                     const match = content.match(/(?:Hi|Hello|Hey)\s+([a-zA-Z]+(?: [a-zA-Z]+)?)/i);
                     if (match && match[1]) {
                         const extractedName = match[1];
-                        supabase.from('user').select('id').eq('mobile', selectedSession).single()
-                            .then(({ data }) => {
+                        supabase.from('user').select('id').eq('mobile', selectedSession).maybeSingle()
+                            .then(({ data, error }) => {
+                                if (error) return;
                                 if (data) {
                                     supabase.from('user').update({ contact_name: extractedName }).eq('mobile', selectedSession).then();
                                 } else {
@@ -301,12 +307,10 @@ export default function Inbox({ user }) {
                 .from('user')
                 .select('agent_status')
                 .eq('mobile', mobile)
-                .single()
+                .maybeSingle()
 
             if (error) {
-                if (error.code !== 'PGRST116') {
-                    console.error('Error fetching agent status:', error)
-                }
+                console.error('Error fetching agent status:', error)
                 setIsHumanMode(false) // Default to AI if user doesn't exist yet
             } else if (data) {
                 setIsHumanMode(data.agent_status === false)
@@ -659,6 +663,63 @@ export default function Inbox({ user }) {
         }
     }
 
+    const handleAddContact = async () => {
+        if (!newContactNumber.trim() || !newContactName.trim()) return;
+
+        // Remove all non-digits (including +) to ensure WhatsApp API compatibility
+        const cleanNumber = newContactNumber.replace(/[^0-9]/g, '');
+        if (cleanNumber.length < 5) {
+            alert('Please enter a valid phone number.');
+            return;
+        }
+
+        try {
+            // Check if user exists using maybeSingle to avoid 406 error
+            const { data: existingUser, error: checkError } = await supabase
+                .from('user')
+                .select('id')
+                .eq('mobile', cleanNumber)
+                .maybeSingle();
+
+            if (checkError) {
+                throw checkError;
+            }
+
+            if (existingUser) {
+                // Update existing user
+                const { error: updateError } = await supabase
+                    .from('user')
+                    .update({ contact_name: newContactName, agent_status: true })
+                    .eq('mobile', cleanNumber);
+                if (updateError) throw updateError;
+            } else {
+                // Insert new user
+                const { error: insertError } = await supabase
+                    .from('user')
+                    .insert({ mobile: cleanNumber, contact_name: newContactName, agent_status: true });
+                if (insertError) throw insertError;
+            }
+
+            const { error: msgError } = await supabase
+                .from('agent_goku')
+                .insert({
+                    session_id: Number(cleanNumber),
+                    message: { type: 'system', content: '[SYSTEM] Contact added manually' }
+                });
+
+            if (msgError) throw msgError;
+
+            setNewContactName('');
+            setNewContactNumber('');
+            setIsAddingContact(false);
+
+            fetchSessions();
+        } catch (err) {
+            console.error('Error adding contact:', err);
+            alert('Failed to add contact.');
+        }
+    }
+
     const formatMessage = (msgData, allMessages = []) => {
         const parsed = parseMessageData(msgData)
 
@@ -855,6 +916,13 @@ export default function Inbox({ user }) {
                                         className="w-full bg-gray-50/50 text-sm rounded-xl pl-9 pr-4 py-2.5 outline-none border border-gray-200/60 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-gray-400"
                                     />
                                 </div>
+                                <button
+                                    onClick={() => setIsAddingContact(true)}
+                                    className="bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+                                    title="Add Contact"
+                                >
+                                    <Plus size={20} />
+                                </button>
                                 <select
                                     value={selectedCountryFilter || ''}
                                     onChange={e => setSelectedCountryFilter(e.target.value || null)}
@@ -867,6 +935,37 @@ export default function Inbox({ user }) {
                                     ))}
                                 </select>
                             </div>
+                            {isAddingContact && (
+                                <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 mt-1 flex flex-col gap-2">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">New Contact</span>
+                                        <button onClick={() => setIsAddingContact(false)} className="text-gray-400 hover:text-gray-600">
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Name"
+                                        value={newContactName}
+                                        onChange={(e) => setNewContactName(e.target.value)}
+                                        className="w-full bg-white text-sm rounded-lg px-3 py-2 outline-none border border-gray-200 focus:border-blue-500 transition-all"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Phone (e.g. +1234567890)"
+                                        value={newContactNumber}
+                                        onChange={(e) => setNewContactNumber(e.target.value)}
+                                        className="w-full bg-white text-sm rounded-lg px-3 py-2 outline-none border border-gray-200 focus:border-blue-500 transition-all"
+                                    />
+                                    <button
+                                        onClick={handleAddContact}
+                                        disabled={!newContactName.trim() || !newContactNumber.trim()}
+                                        className="w-full bg-blue-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+                                    >
+                                        Save Contact
+                                    </button>
+                                </div>
+                            )}
                             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
                                 <button
                                     onClick={() => setSelectedLabelFilter(null)}
