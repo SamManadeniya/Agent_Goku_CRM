@@ -452,48 +452,29 @@ export default function Inbox({ user }) {
         e.preventDefault();
         if (!inputText.trim() || !selectedSession) return;
 
-        // Move custom flags into additional_kwargs
-        const payload = {
-            type: 'ai',
-            content: inputText,
-            additional_kwargs: { is_staff: true, author: user.username }
-        };
         const textToSend = inputText;
+        setInputText('');
 
         try {
-            // 1. Save to Supabase
-            await supabase.from('agent_goku').insert({
-                session_id: Number(selectedSession),
-                message: payload
+            const savedUser = localStorage.getItem('agent_goku_user');
+            const token = savedUser ? JSON.parse(savedUser).token : null;
+
+            const response = await fetch('/.netlify/functions/whatsapp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    sessionId: selectedSession,
+                    message: textToSend
+                })
             });
 
-            setInputText('');
-
-            // 2. Send directly to WhatsApp API
-            const token = import.meta.env.VITE_WHATSAPP_ACCESS_TOKEN;
-            const phoneId = import.meta.env.VITE_WHATSAPP_PHONE_NUMBER_ID;
-
-            if (token && phoneId) {
-                const response = await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        messaging_product: 'whatsapp',
-                        recipient_type: 'individual',
-                        to: selectedSession,
-                        type: 'text',
-                        text: { body: textToSend }
-                    })
-                });
-
+            if (!response.ok) {
                 const result = await response.json();
-                if (!response.ok) {
-                    console.error('WhatsApp API Error:', result);
-                    alert('Failed to send to WhatsApp. Check console for details.');
-                }
+                console.error('Backend API Error:', result);
+                alert('Failed to send message. Check console for details.');
             }
         } catch (err) {
             console.error('Error sending message:', err);
@@ -539,38 +520,25 @@ export default function Inbox({ user }) {
         setInputText('');
 
         const members = selectedGroup.group_members.map(m => m.session_id);
+        const savedUser = localStorage.getItem('agent_goku_user');
+        const token = savedUser ? JSON.parse(savedUser).token : null;
 
         for (const memberId of members) {
-            const payload = {
-                type: 'ai',
-                content: textToSend,
-                additional_kwargs: { is_staff: true, author: user.username, is_broadcast: true }
-            };
-
             try {
-                await supabase.from('agent_goku').insert({
-                    session_id: Number(memberId),
-                    message: payload
+                const response = await fetch('/.netlify/functions/whatsapp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        sessionId: memberId,
+                        message: textToSend
+                    })
                 });
 
-                const token = import.meta.env.VITE_WHATSAPP_ACCESS_TOKEN;
-                const phoneId = import.meta.env.VITE_WHATSAPP_PHONE_NUMBER_ID;
-
-                if (token && phoneId) {
-                    await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            messaging_product: 'whatsapp',
-                            recipient_type: 'individual',
-                            to: memberId,
-                            type: 'text',
-                            text: { body: textToSend }
-                        })
-                    });
+                if (!response.ok) {
+                    console.error(`Failed to broadcast to ${memberId}`);
                 }
             } catch (err) {
                 console.error(`Error broadcasting to ${memberId}:`, err);

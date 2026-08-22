@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Bot, Lock, User, KeyRound, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import bcrypt from 'bcryptjs'
 
 export default function Login({ onLogin }) {
     const [username, setUsername] = useState('')
@@ -37,22 +36,22 @@ export default function Login({ onLogin }) {
         setLoading(true)
 
         try {
-            const { data: user, error: dbError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('username', username.toLowerCase())
-                .single()
+            const response = await fetch('/.netlify/functions/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            });
 
-            if (dbError || !user) {
-                throw new Error('Invalid username or password')
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Login failed');
             }
 
-            const isValid = await bcrypt.compare(password, user.password_hash)
-            if (!isValid) {
-                throw new Error('Invalid username or password')
-            }
-
-            onLogin({ id: user.id, username: user.username, role: user.role })
+            // Pass the token along with user data
+            onLogin({ ...data.user, token: data.token })
         } catch (err) {
             setError(err.message)
         } finally {
