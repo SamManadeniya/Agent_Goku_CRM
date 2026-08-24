@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Bot, Lock, User, KeyRound, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import bcrypt from 'bcryptjs'
 
 export default function Login({ onLogin }) {
     const [username, setUsername] = useState('')
