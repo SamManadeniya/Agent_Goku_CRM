@@ -30,6 +30,14 @@ export const handler = async (event, context) => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+        const { count: totalMessagesCount } = await supabase
+            .from('agent_goku')
+            .select('*', { count: 'exact', head: true });
+
+        const { count: totalClientsCount } = await supabase
+            .from('user')
+            .select('*', { count: 'exact', head: true });
+
         const { data, error } = await supabase
             .from('agent_goku')
             .select('session_id, created_at')
@@ -83,8 +91,8 @@ export const handler = async (event, context) => {
             statusCode: 200,
             body: JSON.stringify({
                 stats: {
-                    totalChats: uniqueSessions.size,
-                    totalMessages: data.length,
+                    totalChats: totalClientsCount || uniqueSessions.size,
+                    totalMessages: totalMessagesCount || data.length,
                     activeToday: activeTodayCount,
                     onlineNow: onlineNowCount
                 },
