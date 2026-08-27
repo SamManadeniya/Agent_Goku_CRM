@@ -174,17 +174,20 @@ export default function Inbox({ user }) {
                     const content = parsed.content;
                     const match = content.match(/(?:Hi|Hello|Hey)\s+([a-zA-Z]+(?: [a-zA-Z]+)?)/i);
                     if (match && match[1]) {
-                        const extractedName = match[1];
-                        supabase.from('user').select('id').eq('mobile', selectedSession).maybeSingle()
-                            .then(({ data, error }) => {
-                                if (error) return;
-                                if (data) {
-                                    supabase.from('user').update({ contact_name: extractedName }).eq('mobile', selectedSession).then();
-                                } else {
-                                    supabase.from('user').insert({ mobile: selectedSession, contact_name: extractedName, agent_status: true }).then();
-                                }
-                            });
-                        break;
+                        const extractedName = match[1].trim();
+                        const lowerName = extractedName.toLowerCase();
+                        if (!['there', 'friend', 'user', 'mate', 'buddy', 'sir', 'madam'].includes(lowerName)) {
+                            supabase.from('user').select('id').eq('mobile', selectedSession).maybeSingle()
+                                .then(({ data, error }) => {
+                                    if (error) return;
+                                    if (data) {
+                                        supabase.from('user').update({ contact_name: extractedName }).eq('mobile', selectedSession).then();
+                                    } else {
+                                        supabase.from('user').insert({ mobile: selectedSession, contact_name: extractedName, agent_status: true }).then();
+                                    }
+                                });
+                            break;
+                        }
                     }
                 }
             }
