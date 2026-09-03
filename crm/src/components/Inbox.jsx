@@ -44,6 +44,9 @@ export default function Inbox({ user }) {
     const [newContactName, setNewContactName] = useState('')
     const [newContactNumber, setNewContactNumber] = useState('')
 
+    // Global Pause state
+    const [isGlobalPaused, setIsGlobalPaused] = useState(false)
+
     const messagesEndRef = useRef(null)
     const selectedSessionRef = useRef(selectedSession)
 
@@ -448,6 +451,31 @@ export default function Inbox({ user }) {
         } catch (err) {
             console.error('Error toggling mode:', err);
             alert('Failed to update agent status.');
+        }
+    }
+
+    const handleGlobalPauseToggle = async () => {
+        const newState = !isGlobalPaused;
+        if (!window.confirm(`Are you sure you want to ${newState ? 'pause' : 'resume'} the AI for ALL chats?`)) return;
+
+        try {
+            // Update all users. agent_status: false means human mode (paused)
+            const { error } = await supabase
+                .from('user')
+                .update({ agent_status: !newState })
+                .neq('mobile', '0'); // Dummy condition to update all rows if needed, or just omit eq
+
+            if (error) throw error;
+            setIsGlobalPaused(newState);
+
+            // If the current open chat is affected, update its local state
+            if (selectedSession) {
+                setIsHumanMode(newState);
+            }
+            alert(`AI has been globally ${newState ? 'paused' : 'resumed'}.`);
+        } catch (err) {
+            console.error('Error toggling global pause:', err);
+            alert('Failed to update global agent status.');
         }
     }
 
@@ -866,9 +894,19 @@ export default function Inbox({ user }) {
             <div className={`bg-white border-r border-gray-100 flex-col shadow-[2px_0_8px_-4px_rgba(0,0,0,0.05)] z-10 ${isChatOpenOnMobile ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}`}>
                 <div className="p-5 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-20">
                     <div className="flex items-center justify-between mb-5">
-                        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2 tracking-tight">
-                            Inbox
-                        </h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2 tracking-tight">
+                                Inbox
+                            </h1>
+                            <button
+                                onClick={handleGlobalPauseToggle}
+                                className={`px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm border uppercase tracking-wider ${isGlobalPaused ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                                title={isGlobalPaused ? "Resume All AI" : "Pause All AI"}
+                            >
+                                {isGlobalPaused ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
+                                {isGlobalPaused ? 'Global Resume' : 'Global Pause'}
+                            </button>
+                        </div>
                         <div className="flex bg-gray-100/80 p-1 rounded-lg border border-gray-200/50">
                             <button onClick={() => { setActiveTab('chats'); setSelectedGroup(null); }} className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 ${activeTab === 'chats' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Chats</button>
                             <button onClick={() => { setActiveTab('groups'); setSelectedSession(null); }} className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 ${activeTab === 'groups' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Groups</button>
@@ -1068,13 +1106,13 @@ export default function Inbox({ user }) {
             <div className={`flex-1 flex-col bg-[#f0f2f5] relative overflow-hidden ${!isChatOpenOnMobile ? 'hidden md:flex' : 'flex'}`}>
                 {activeTab === 'chats' && selectedSession ? (
                     <>
-                        <div className="px-6 py-4 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm flex items-center justify-between z-20 absolute top-0 left-0 right-0">
-                            <div className="flex items-center gap-4">
+                        <div className="px-3 py-3 md:px-6 md:py-4 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm flex items-center justify-between z-20 absolute top-0 left-0 right-0">
+                            <div className="flex items-center gap-2 md:gap-4">
                                 <button onClick={() => { setIsChatOpenOnMobile(false); setSelectedSession(null); }} className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
                                     <ChevronLeft size={24} />
                                 </button>
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm">
-                                    <User size={24} />
+                                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm">
+                                    <User size={24} className="w-5 h-5 md:w-6 md:h-6" />
                                 </div>
                                 <div>
                                     {(() => {
@@ -1146,22 +1184,22 @@ export default function Inbox({ user }) {
                             </div>
 
                             {/* Actions */}
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 md:gap-3">
                                 <button
                                     onClick={handleDeleteChat}
-                                    className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors shadow-sm border border-red-100"
+                                    className="p-2 md:p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors shadow-sm border border-red-100"
                                     title="Delete Chat"
                                 >
-                                    <Trash2 size={18} />
+                                    <Trash2 size={18} className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                                 </button>
                                 <button
                                     onClick={handleTakeover}
-                                    className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-200 shadow-sm ${isHumanMode ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-amber-200/50' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/30'}`}
+                                    className={`px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 md:gap-2 transition-all duration-200 shadow-sm ${isHumanMode ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-amber-200/50' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/30'}`}
                                 >
                                     {isHumanMode ? (
-                                        <><ShieldCheck size={18} /> Resume AI</>
+                                        <><ShieldCheck size={18} className="w-4 h-4 md:w-[18px] md:h-[18px]" /> Resume AI</>
                                     ) : (
-                                        <><ShieldAlert size={18} /> Take Over Chat</>
+                                        <><ShieldAlert size={18} className="w-4 h-4 md:w-[18px] md:h-[18px]" /> Take Over Chat</>
                                     )}
                                 </button>
                             </div>
@@ -1215,13 +1253,13 @@ export default function Inbox({ user }) {
                     </>
                 ) : activeTab === 'groups' && selectedGroup ? (
                     <>
-                        <div className="px-6 py-4 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm flex items-center justify-between z-20 absolute top-0 left-0 right-0">
-                            <div className="flex items-center gap-4">
+                        <div className="px-3 py-3 md:px-6 md:py-4 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm flex items-center justify-between z-20 absolute top-0 left-0 right-0">
+                            <div className="flex items-center gap-2 md:gap-4">
                                 <button onClick={() => { setIsChatOpenOnMobile(false); setSelectedGroup(null); }} className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
                                     <ChevronLeft size={24} />
                                 </button>
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm">
-                                    <Users size={24} />
+                                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm">
+                                    <Users size={24} className="w-5 h-5 md:w-6 md:h-6" />
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-bold text-gray-800 tracking-tight">
@@ -1230,25 +1268,25 @@ export default function Inbox({ user }) {
                                     <p className="text-sm text-gray-500 font-medium">{selectedGroup.group_members.length} members</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 md:gap-3">
                                 <button
                                     onClick={() => setIsAddingMembers(true)}
-                                    className="px-4 py-2 text-sm font-semibold text-green-600 bg-green-50 hover:bg-green-100 rounded-xl transition-colors shadow-sm border border-green-100 flex items-center gap-2"
+                                    className="px-3 md:px-4 py-2 text-xs md:text-sm font-semibold text-green-600 bg-green-50 hover:bg-green-100 rounded-xl transition-colors shadow-sm border border-green-100 flex items-center gap-1.5 md:gap-2"
                                 >
-                                    <Plus size={16} /> Add Member
+                                    <Plus size={16} className="w-4 h-4 md:w-[16px] md:h-[16px]" /> <span className="hidden sm:inline">Add Member</span>
                                 </button>
                                 <button
                                     onClick={() => setIsViewingGroupMembers(true)}
-                                    className="px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors shadow-sm border border-blue-100 flex items-center gap-2"
+                                    className="px-3 md:px-4 py-2 text-xs md:text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors shadow-sm border border-blue-100 flex items-center gap-1.5 md:gap-2"
                                 >
-                                    <Users size={16} /> View Members
+                                    <Users size={16} className="w-4 h-4 md:w-[16px] md:h-[16px]" /> <span className="hidden sm:inline">Members</span>
                                 </button>
                                 <button
                                     onClick={handleDeleteGroup}
-                                    className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors shadow-sm border border-red-100"
+                                    className="p-2 md:p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors shadow-sm border border-red-100"
                                     title="Delete Group"
                                 >
-                                    <Trash2 size={18} />
+                                    <Trash2 size={18} className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                                 </button>
                             </div>
                         </div>
