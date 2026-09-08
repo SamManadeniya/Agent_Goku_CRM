@@ -1103,18 +1103,18 @@ export default function Inbox({ user }) {
             </div>
 
             {/* Main Chat Area */}
-            <div className={`flex-1 flex-col bg-[#f0f2f5] relative overflow-hidden ${!isChatOpenOnMobile ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`flex-1 flex-col bg-[#f0f2f5] relative overflow-hidden h-full ${!isChatOpenOnMobile ? 'hidden md:flex' : 'flex'}`}>
                 {activeTab === 'chats' && selectedSession ? (
                     <>
-                        <div className="px-3 py-3 md:px-6 md:py-4 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm flex items-center justify-between z-20 absolute top-0 left-0 right-0">
-                            <div className="flex items-center gap-2 md:gap-4">
-                                <button onClick={() => { setIsChatOpenOnMobile(false); setSelectedSession(null); }} className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
-                                    <ChevronLeft size={24} />
+                        <div className="px-3 py-2.5 md:px-6 md:py-4 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm flex items-center justify-between z-20 flex-shrink-0 w-full">
+                            <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1 mr-2">
+                                <button onClick={() => { setIsChatOpenOnMobile(false); setSelectedSession(null); }} className="md:hidden p-1.5 -ml-1 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0" title="Back">
+                                    <ChevronLeft size={22} />
                                 </button>
-                                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm">
-                                    <User size={24} className="w-5 h-5 md:w-6 md:h-6" />
+                                <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm flex-shrink-0">
+                                    <User size={20} className="w-5 h-5 md:w-6 md:h-6" />
                                 </div>
-                                <div>
+                                <div className="min-w-0 flex-1">
                                     {(() => {
                                         const sessionData = sessions.find(s => s.id === selectedSession)
                                         const { formatted, Flag } = formatPhoneNumber(selectedSession)
@@ -1126,30 +1126,30 @@ export default function Inbox({ user }) {
                                                         type="text"
                                                         value={tempName}
                                                         onChange={e => setTempName(e.target.value)}
-                                                        className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                                        className="border border-gray-300 rounded-lg px-2.5 py-1 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all w-full max-w-[150px] sm:max-w-xs"
                                                         autoFocus
                                                     />
-                                                    <button onClick={saveContactName} className="text-green-600 hover:bg-green-50 p-1.5 rounded-md transition-colors"><Check size={16} /></button>
-                                                    <button onClick={() => setEditingName(false)} className="text-red-600 hover:bg-red-50 p-1.5 rounded-md transition-colors"><X size={16} /></button>
+                                                    <button onClick={saveContactName} className="text-green-600 hover:bg-green-50 p-1 rounded-md transition-colors flex-shrink-0"><Check size={16} /></button>
+                                                    <button onClick={() => setEditingName(false)} className="text-red-600 hover:bg-red-50 p-1 rounded-md transition-colors flex-shrink-0"><X size={16} /></button>
                                                 </div>
                                             )
                                         }
 
                                         return (
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 tracking-tight">
-                                                    {Flag && <Flag title={formatted} className="w-6 h-4 rounded-sm shadow-sm" />}
-                                                    {sessionData?.contact_name || formatted}
+                                            <div className="flex items-center gap-1.5 md:gap-2 mb-0.5">
+                                                <h2 className="text-sm md:text-lg font-bold text-gray-800 flex items-center gap-1.5 tracking-tight truncate min-w-0">
+                                                    {Flag && <Flag title={formatted} className="w-5 h-3.5 md:w-6 md:h-4 rounded-sm shadow-sm flex-shrink-0" />}
+                                                    <span className="truncate">{sessionData?.contact_name || formatted}</span>
                                                 </h2>
-                                                <button onClick={() => { setTempName(sessionData?.contact_name || ''); setEditingName(true); }} className="text-gray-400 hover:text-blue-600 transition-colors">
-                                                    <Edit2 size={14} />
+                                                <button onClick={() => { setTempName(sessionData?.contact_name || ''); setEditingName(true); }} className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 flex-shrink-0" title="Edit Name">
+                                                    <Edit2 size={13} className="md:w-3.5 md:h-3.5" />
                                                 </button>
-                                                <button onClick={() => toggleFavourite(selectedSession, sessionData?.is_favourite)} className={`transition-colors ${sessionData?.is_favourite ? 'text-yellow-400 drop-shadow-sm' : 'text-gray-300 hover:text-yellow-400'}`}>
-                                                    <Star size={18} fill={sessionData?.is_favourite ? "currentColor" : "none"} />
+                                                <button onClick={() => toggleFavourite(selectedSession, sessionData?.is_favourite)} className={`transition-colors p-0.5 flex-shrink-0 ${sessionData?.is_favourite ? 'text-yellow-400 drop-shadow-sm' : 'text-gray-300 hover:text-yellow-400'}`} title="Favorite">
+                                                    <Star size={16} className="md:w-[18px] md:h-[18px]" fill={sessionData?.is_favourite ? "currentColor" : "none"} />
                                                 </button>
-                                                <div className="relative">
-                                                    <button onClick={() => setIsAssigningLabel(!isAssigningLabel)} className="text-gray-400 hover:text-blue-600 transition-colors ml-1">
-                                                        <Tag size={16} />
+                                                <div className="relative flex-shrink-0">
+                                                    <button onClick={() => setIsAssigningLabel(!isAssigningLabel)} className="text-gray-400 hover:text-blue-600 transition-colors p-0.5" title="Labels">
+                                                        <Tag size={15} className="md:w-4 md:h-4" />
                                                     </button>
                                                     {isAssigningLabel && (
                                                         <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
@@ -1177,35 +1177,35 @@ export default function Inbox({ user }) {
                                         )
                                     })()}
                                     <div className="flex items-center gap-1.5">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                        <p className="text-xs text-green-600 font-semibold">Online</p>
+                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
+                                        <p className="text-[11px] md:text-xs text-green-600 font-semibold">Online</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Actions */}
-                            <div className="flex items-center gap-2 md:gap-3">
+                            <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
                                 <button
                                     onClick={handleDeleteChat}
-                                    className="p-2 md:p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors shadow-sm border border-red-100"
+                                    className="p-1.5 md:p-2.5 text-red-500 hover:bg-red-50 rounded-lg md:rounded-xl transition-colors shadow-sm border border-red-100 flex-shrink-0"
                                     title="Delete Chat"
                                 >
-                                    <Trash2 size={18} className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+                                    <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
                                 </button>
                                 <button
                                     onClick={handleTakeover}
-                                    className={`px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 md:gap-2 transition-all duration-200 shadow-sm ${isHumanMode ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-amber-200/50' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/30'}`}
+                                    className={`px-2.5 py-1.5 md:px-5 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold flex items-center gap-1 md:gap-2 transition-all duration-200 shadow-sm whitespace-nowrap flex-shrink-0 ${isHumanMode ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-amber-200/50' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/30'}`}
                                 >
                                     {isHumanMode ? (
-                                        <><ShieldCheck size={18} className="w-4 h-4 md:w-[18px] md:h-[18px]" /> Resume AI</>
+                                        <><ShieldCheck size={15} className="md:w-[18px] md:h-[18px]" /> <span>Resume AI</span></>
                                     ) : (
-                                        <><ShieldAlert size={18} className="w-4 h-4 md:w-[18px] md:h-[18px]" /> Take Over Chat</>
+                                        <><ShieldAlert size={15} className="md:w-[18px] md:h-[18px]" /> <span className="hidden sm:inline">Take Over Chat</span><span className="sm:hidden">Take Over</span></>
                                     )}
                                 </button>
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32 pt-28 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+                        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
                             {messages.map((msg) => {
                                 const parsed = parseMessageData(msg.message)
                                 const isSystem = parsed?.type === 'system'
@@ -1231,21 +1231,21 @@ export default function Inbox({ user }) {
 
                         {/* Chat Input Area */}
                         {isHumanMode && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20">
-                                <form onSubmit={handleSendMessage} className="flex items-center gap-3 max-w-4xl mx-auto">
+                            <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-2.5 sm:p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20">
+                                <form onSubmit={handleSendMessage} className="flex items-center gap-2 sm:gap-3 max-w-4xl mx-auto">
                                     <input
                                         type="text"
                                         value={inputText}
                                         onChange={(e) => setInputText(e.target.value)}
                                         placeholder="Type a message to the client..."
-                                        className="flex-1 bg-gray-100 border border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl px-6 py-3.5 outline-none transition-all shadow-inner"
+                                        className="flex-1 bg-gray-100 border border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3.5 outline-none transition-all shadow-inner text-sm sm:text-base"
                                     />
                                     <button
                                         type="submit"
                                         disabled={!inputText.trim()}
-                                        className="w-14 h-14 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0"
+                                        className="w-10 h-10 sm:w-14 sm:h-14 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl sm:rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0 flex-shrink-0"
                                     >
-                                        <Send size={22} className="ml-1" />
+                                        <Send size={18} className="sm:w-[22px] sm:h-[22px] ml-0.5 sm:ml-1" />
                                     </button>
                                 </form>
                             </div>
@@ -1253,69 +1253,69 @@ export default function Inbox({ user }) {
                     </>
                 ) : activeTab === 'groups' && selectedGroup ? (
                     <>
-                        <div className="px-3 py-3 md:px-6 md:py-4 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm flex items-center justify-between z-20 absolute top-0 left-0 right-0">
-                            <div className="flex items-center gap-2 md:gap-4">
-                                <button onClick={() => { setIsChatOpenOnMobile(false); setSelectedGroup(null); }} className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
-                                    <ChevronLeft size={24} />
+                        <div className="px-3 py-2.5 md:px-6 md:py-4 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm flex items-center justify-between z-20 flex-shrink-0 w-full">
+                            <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1 mr-2">
+                                <button onClick={() => { setIsChatOpenOnMobile(false); setSelectedGroup(null); }} className="md:hidden p-1.5 -ml-1 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0" title="Back">
+                                    <ChevronLeft size={22} />
                                 </button>
-                                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm">
-                                    <Users size={24} className="w-5 h-5 md:w-6 md:h-6" />
+                                <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm flex-shrink-0">
+                                    <Users size={20} className="w-5 h-5 md:w-6 md:h-6" />
                                 </div>
-                                <div>
-                                    <h2 className="text-lg font-bold text-gray-800 tracking-tight">
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-sm md:text-lg font-bold text-gray-800 tracking-tight truncate">
                                         {selectedGroup.name}
                                     </h2>
-                                    <p className="text-sm text-gray-500 font-medium">{selectedGroup.group_members.length} members</p>
+                                    <p className="text-[11px] md:text-sm text-gray-500 font-medium truncate">{selectedGroup.group_members.length} members</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2 md:gap-3">
+                            <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
                                 <button
                                     onClick={() => setIsAddingMembers(true)}
-                                    className="px-3 md:px-4 py-2 text-xs md:text-sm font-semibold text-green-600 bg-green-50 hover:bg-green-100 rounded-xl transition-colors shadow-sm border border-green-100 flex items-center gap-1.5 md:gap-2"
+                                    className="px-2.5 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-semibold text-green-600 bg-green-50 hover:bg-green-100 rounded-lg md:rounded-xl transition-colors shadow-sm border border-green-100 flex items-center gap-1 md:gap-2"
                                 >
-                                    <Plus size={16} className="w-4 h-4 md:w-[16px] md:h-[16px]" /> <span className="hidden sm:inline">Add Member</span>
+                                    <Plus size={15} className="md:w-4 md:h-4" /> <span className="hidden sm:inline">Add Member</span>
                                 </button>
                                 <button
                                     onClick={() => setIsViewingGroupMembers(true)}
-                                    className="px-3 md:px-4 py-2 text-xs md:text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors shadow-sm border border-blue-100 flex items-center gap-1.5 md:gap-2"
+                                    className="px-2.5 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg md:rounded-xl transition-colors shadow-sm border border-blue-100 flex items-center gap-1 md:gap-2"
                                 >
-                                    <Users size={16} className="w-4 h-4 md:w-[16px] md:h-[16px]" /> <span className="hidden sm:inline">Members</span>
+                                    <Users size={15} className="md:w-4 md:h-4" /> <span className="hidden sm:inline">Members</span>
                                 </button>
                                 <button
                                     onClick={handleDeleteGroup}
-                                    className="p-2 md:p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors shadow-sm border border-red-100"
+                                    className="p-1.5 md:p-2.5 text-red-500 hover:bg-red-50 rounded-lg md:rounded-xl transition-colors shadow-sm border border-red-100"
                                     title="Delete Group"
                                 >
-                                    <Trash2 size={18} className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+                                    <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
                                 </button>
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32 pt-28 flex flex-col items-center justify-center text-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
-                            <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-6 text-blue-500 shadow-inner">
-                                <Send size={40} />
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 flex flex-col items-center justify-center text-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-blue-50 rounded-full flex items-center justify-center mb-4 sm:mb-6 text-blue-500 shadow-inner">
+                                <Send size={32} className="sm:w-10 sm:h-10" />
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-800 tracking-tight">Broadcast Message</h3>
-                            <p className="text-gray-500 max-w-md mt-3 text-lg leading-relaxed">
+                            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Broadcast Message</h3>
+                            <p className="text-gray-500 max-w-md mt-2 sm:mt-3 text-sm sm:text-lg leading-relaxed px-4">
                                 Send a message to all <span className="font-bold text-gray-700">{selectedGroup.group_members.length}</span> members of the "{selectedGroup.name}" group at once.
                             </p>
                         </div>
 
-                        <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20">
-                            <form onSubmit={handleSendBroadcast} className="flex items-center gap-3 max-w-4xl mx-auto">
+                        <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-2.5 sm:p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20">
+                            <form onSubmit={handleSendBroadcast} className="flex items-center gap-2 sm:gap-3 max-w-4xl mx-auto">
                                 <input
                                     type="text"
                                     value={inputText}
                                     onChange={(e) => setInputText(e.target.value)}
                                     placeholder="Type a broadcast message..."
-                                    className="flex-1 bg-gray-100 border border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl px-6 py-3.5 outline-none transition-all shadow-inner"
+                                    className="flex-1 bg-gray-100 border border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3.5 outline-none transition-all shadow-inner text-sm sm:text-base"
                                 />
                                 <button
                                     type="submit"
                                     disabled={!inputText.trim()}
-                                    className="w-14 h-14 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0"
+                                    className="w-10 h-10 sm:w-14 sm:h-14 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl sm:rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0 flex-shrink-0"
                                 >
-                                    <Send size={22} className="ml-1" />
+                                    <Send size={18} className="sm:w-[22px] sm:h-[22px] ml-0.5 sm:ml-1" />
                                 </button>
                             </form>
                         </div>
