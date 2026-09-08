@@ -48,6 +48,7 @@ export default function Inbox({ user }) {
     const [isGlobalPaused, setIsGlobalPaused] = useState(false)
 
     const messagesEndRef = useRef(null)
+    const messagesContainerRef = useRef(null)
     const selectedSessionRef = useRef(selectedSession)
 
     useEffect(() => {
@@ -160,8 +161,19 @@ export default function Inbox({ user }) {
     }, [selectedSession])
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
     }, [messages])
+
+    useEffect(() => {
+        if (selectedSession) {
+            window.scrollTo(0, 0);
+            if (messagesContainerRef.current) {
+                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+        }
+    }, [selectedSession, isChatOpenOnMobile])
 
     useEffect(() => {
         if (!selectedSession || messages.length === 0) return;
@@ -889,7 +901,7 @@ export default function Inbox({ user }) {
     }).filter(Boolean))).sort()
 
     return (
-        <div className="flex h-full w-full bg-[#f8fafc] font-sans">
+        <div className="flex h-full w-full bg-[#f8fafc] font-sans min-h-0 overflow-hidden">
             {/* Sidebar */}
             <div className={`bg-white border-r border-gray-100 flex-col shadow-[2px_0_8px_-4px_rgba(0,0,0,0.05)] z-10 ${isChatOpenOnMobile ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}`}>
                 <div className="p-5 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-20">
@@ -1103,7 +1115,7 @@ export default function Inbox({ user }) {
             </div>
 
             {/* Main Chat Area */}
-            <div className={`flex-1 flex-col bg-[#f0f2f5] relative overflow-hidden h-full ${!isChatOpenOnMobile ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`flex-1 flex flex-col bg-[#f0f2f5] relative overflow-hidden h-full min-h-0 ${!isChatOpenOnMobile ? 'hidden md:flex' : 'flex'}`}>
                 {activeTab === 'chats' && selectedSession ? (
                     <>
                         <div className="px-3 py-2.5 md:px-6 md:py-4 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm flex items-center justify-between z-20 flex-shrink-0 w-full">
@@ -1205,7 +1217,7 @@ export default function Inbox({ user }) {
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+                        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-6 space-y-4 sm:space-y-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
                             {messages.map((msg) => {
                                 const parsed = parseMessageData(msg.message)
                                 const isSystem = parsed?.type === 'system'
@@ -1291,7 +1303,7 @@ export default function Inbox({ user }) {
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 flex flex-col items-center justify-center text-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+                        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-4 sm:space-y-6 flex flex-col items-center justify-center text-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
                             <div className="w-20 h-20 sm:w-24 sm:h-24 bg-blue-50 rounded-full flex items-center justify-center mb-4 sm:mb-6 text-blue-500 shadow-inner">
                                 <Send size={32} className="sm:w-10 sm:h-10" />
                             </div>

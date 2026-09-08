@@ -67,7 +67,7 @@ export default function App() {
   return (
     <div className="flex flex-col md:flex-row h-screen h-[100dvh] bg-gray-100 font-sans overflow-hidden">
       {/* Main Sidebar Navigation */}
-      <div className="w-full md:w-20 h-14 md:h-auto bg-gray-900 flex flex-row md:flex-col items-center justify-around md:justify-start py-1 md:py-6 shadow-xl z-20 order-last md:order-first">
+      <div className="w-full md:w-20 h-14 md:h-auto bg-gray-900 flex flex-row md:flex-col items-center justify-around md:justify-start py-1 md:py-6 shadow-xl z-20 order-last md:order-first flex-shrink-0">
         <div className="hidden md:flex w-12 h-12 bg-blue-600 rounded-xl items-center justify-center mb-8 shadow-lg">
           <Bot size={28} className="text-white" />
         </div>
@@ -128,7 +128,7 @@ export default function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative min-h-0">
         {currentView === 'dashboard' && <Dashboard />}
         {currentView === 'inbox' && <Inbox user={user} />}
         {currentView === 'auction' && <AuctionRequests />}
