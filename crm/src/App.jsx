@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import Inbox from './components/Inbox'
-import { LayoutDashboard, MessageSquare, LogOut, Bot } from 'lucide-react'
+import AuctionRequests from './components/AuctionRequests'
+import Customers from './components/Customers'
+import { LayoutDashboard, MessageSquare, LogOut, Bot, Car, Users } from 'lucide-react'
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -10,6 +13,43 @@ export default function App() {
     return savedUser ? JSON.parse(savedUser) : null
   })
   const [currentView, setCurrentView] = useState('inbox') // 'dashboard' or 'inbox'
+  const [newLeadsCount, setNewLeadsCount] = useState(0)
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchLeadsCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('auction_requests')
+          .select('*', { count: 'exact', head: true })
+          .or('status.eq.New Lead,status.is.null')
+
+        if (!error && count !== null) {
+          setNewLeadsCount(count)
+        }
+      } catch (err) {
+        console.error('Error fetching leads count:', err)
+      }
+    }
+
+    fetchLeadsCount()
+
+    const subscription = supabase
+      .channel('public:auction_requests_count')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'auction_requests'
+      }, () => {
+        fetchLeadsCount()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(subscription)
+    }
+  }, [user])
 
   const handleSetUser = (newUser) => {
     setUser(newUser)
@@ -48,6 +88,29 @@ export default function App() {
             <MessageSquare size={24} />
             <span className="text-[10px] font-medium hidden md:block">Inbox</span>
           </button>
+
+          <button
+            onClick={() => setCurrentView('auction')}
+            className={`relative w-12 md:w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${currentView === 'auction' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+          >
+            <div className="relative">
+              <Car size={24} />
+              {newLeadsCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-gray-900 min-w-[18px] flex items-center justify-center">
+                  {newLeadsCount > 99 ? '99+' : newLeadsCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-medium hidden md:block">Leads</span>
+          </button>
+
+          <button
+            onClick={() => setCurrentView('customers')}
+            className={`w-12 md:w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${currentView === 'customers' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+          >
+            <Users size={24} />
+            <span className="text-[10px] font-medium hidden md:block">Customers</span>
+          </button>
         </div>
 
         <div className="mt-0 md:mt-auto flex flex-row md:flex-col items-center gap-2 md:gap-4 w-auto md:w-full px-3 md:px-0">
@@ -66,7 +129,10 @@ export default function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {currentView === 'dashboard' ? <Dashboard /> : <Inbox user={user} />}
+        {currentView === 'dashboard' && <Dashboard />}
+        {currentView === 'inbox' && <Inbox user={user} />}
+        {currentView === 'auction' && <AuctionRequests />}
+        {currentView === 'customers' && <Customers />}
       </div>
     </div>
   )
