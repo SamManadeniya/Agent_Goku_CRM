@@ -903,8 +903,8 @@ export default function Inbox({ user }) {
     return (
         <div className="flex h-full w-full bg-[#f8fafc] font-sans min-h-0 overflow-hidden">
             {/* Sidebar */}
-            <div className={`bg-white border-r border-gray-100 flex-col shadow-[2px_0_8px_-4px_rgba(0,0,0,0.05)] z-10 ${isChatOpenOnMobile ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}`}>
-                <div className="p-5 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-20">
+            <div className={`bg-white border-r border-gray-100 flex-col shadow-[2px_0_8px_-4px_rgba(0,0,0,0.05)] z-10 h-full min-h-0 ${isChatOpenOnMobile ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}`}>
+                <div className="p-5 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex-shrink-0">
                     <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center gap-3">
                             <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2 tracking-tight">
@@ -1025,7 +1025,7 @@ export default function Inbox({ user }) {
                     )}
                 </div>
 
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto min-h-0">
                     {activeTab === 'chats' ? (
                         loading ? (
                             <div className="p-8 text-center text-gray-400">Loading sessions...</div>
