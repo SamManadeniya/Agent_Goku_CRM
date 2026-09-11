@@ -19,13 +19,34 @@ export default function Customers() {
                 event: '*',
                 schema: 'public',
                 table: 'user'
-            }, payload => {
+            }, () => {
                 fetchCustomers()
             })
             .subscribe()
 
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchCustomers()
+            }
+        }
+
+        const handleWindowFocus = () => {
+            fetchCustomers()
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('focus', handleWindowFocus)
+
+        // 15-second fallback heartbeat
+        const interval = setInterval(() => {
+            fetchCustomers()
+        }, 15000)
+
         return () => {
             supabase.removeChannel(subscription)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            window.removeEventListener('focus', handleWindowFocus)
+            clearInterval(interval)
         }
     }, [])
 

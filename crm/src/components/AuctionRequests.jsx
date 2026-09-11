@@ -1,12 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { Car, CheckCircle, Clock, Search, Filter, Phone, Calendar, DollarSign, Gauge, Droplet, Settings, Palette, FileText, User, Trash2 } from 'lucide-react'
+import { Car, CheckCircle, Clock, Search, Filter, Phone, Calendar, DollarSign, Gauge, Droplet, Settings, Palette, FileText, User, Trash2, Edit2, Check, X } from 'lucide-react'
+import parsePhoneNumberFromString from 'libphonenumber-js'
+import * as Flags from 'country-flag-icons/react/3x2'
+
+const formatPhoneNumber = (phone) => {
+    if (!phone) return { formatted: 'Unknown Customer', country: null, Flag: null, isPhone: false }
+    const phoneStr = String(phone).trim()
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(phoneStr)) {
+        return { formatted: `Web Lead (${phoneStr.slice(0, 8)})`, country: null, Flag: null, isPhone: false }
+    }
+    if (phoneStr === 'user_phone') {
+        return { formatted: 'Direct Lead', country: null, Flag: null, isPhone: false }
+    }
+    try {
+        const withPlus = phoneStr.startsWith('+') ? phoneStr : `+${phoneStr}`
+        const phoneNumber = parsePhoneNumberFromString(withPlus)
+        if (phoneNumber && phoneNumber.isValid()) {
+            const country = phoneNumber.country
+            const Flag = country ? Flags[country] : null
+            return {
+                formatted: phoneNumber.formatInternational(),
+                country: country,
+                Flag: Flag,
+                isPhone: true
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+    return { formatted: phoneStr, country: null, Flag: null, isPhone: false }
+}
+
+const normalizeDigits = (str) => String(str || '').replace(/\D/g, '')
 
 export default function AuctionRequests() {
     const [requests, setRequests] = useState([])
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('New Lead') // 'New Lead' or 'Completed'
     const [searchQuery, setSearchQuery] = useState('')
+    const [editingId, setEditingId] = useState(null)
+    const [tempName, setTempName] = useState('')
+    const isFetchingRef = useRef(false)
 
     useEffect(() => {
         fetchRequests()
@@ -17,17 +52,52 @@ export default function AuctionRequests() {
                 event: '*',
                 schema: 'public',
                 table: 'auction_requests'
-            }, payload => {
+            }, () => {
                 fetchRequests()
             })
             .subscribe()
 
+        const userSubscription = supabase
+            .channel('public:auction_requests_user')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'user'
+            }, () => {
+                fetchRequests()
+            })
+            .subscribe()
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchRequests()
+            }
+        }
+
+        const handleWindowFocus = () => {
+            fetchRequests()
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('focus', handleWindowFocus)
+
+        // 15-second fallback heartbeat to guarantee fresh data even if connection drops
+        const interval = setInterval(() => {
+            fetchRequests()
+        }, 15000)
+
         return () => {
             supabase.removeChannel(subscription)
+            supabase.removeChannel(userSubscription)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            window.removeEventListener('focus', handleWindowFocus)
+            clearInterval(interval)
         }
     }, [])
 
     const fetchRequests = async () => {
+        if (isFetchingRef.current) return
+        isFetchingRef.current = true
         try {
             const { data, error } = await supabase
                 .from('auction_requests')
@@ -36,21 +106,27 @@ export default function AuctionRequests() {
 
             if (error) throw error
 
-            // Fetch user names
+            // Fetch user names with exact and normalized matching
             const phoneNumbers = data.map(req => req.phone_number).filter(Boolean)
             if (phoneNumbers.length > 0) {
                 const { data: userData, error: userError } = await supabase
                     .from('user')
-                    .select('mobile, contact_name')
-                    .in('mobile', phoneNumbers)
+                    .select('id, mobile, contact_name')
 
                 if (!userError && userData) {
                     const userMap = {}
+                    const normalizedUserMap = {}
                     userData.forEach(u => {
-                        userMap[u.mobile] = u.contact_name
+                        if (u.mobile) {
+                            userMap[u.mobile] = u.contact_name
+                            const norm = normalizeDigits(u.mobile)
+                            if (norm) normalizedUserMap[norm] = u.contact_name
+                        }
                     })
                     data.forEach(req => {
-                        req.contact_name = userMap[req.phone_number]
+                        const raw = req.phone_number
+                        const normReq = normalizeDigits(raw)
+                        req.contact_name = userMap[raw] || (normReq ? normalizedUserMap[normReq] : null) || null
                     })
                 }
             }
@@ -60,6 +136,43 @@ export default function AuctionRequests() {
             console.error('Error fetching auction requests:', error)
         } finally {
             setLoading(false)
+            isFetchingRef.current = false
+        }
+    }
+
+    const saveContactName = async (reqId, phoneNumber, newName) => {
+        const trimmed = (newName || '').trim()
+        if (!trimmed) return setEditingId(null)
+
+        try {
+            // Find if user already exists
+            const normPhone = normalizeDigits(phoneNumber)
+            const { data: allUsers } = await supabase.from('user').select('id, mobile')
+
+            let existing = null
+            if (allUsers) {
+                existing = allUsers.find(u => u.mobile === phoneNumber || (normPhone && normalizeDigits(u.mobile) === normPhone))
+            }
+
+            if (existing) {
+                const { error: updateErr } = await supabase
+                    .from('user')
+                    .update({ contact_name: trimmed })
+                    .eq('id', existing.id)
+                if (updateErr) throw updateErr
+            } else if (phoneNumber) {
+                const { error: insertErr } = await supabase
+                    .from('user')
+                    .insert({ mobile: phoneNumber, contact_name: trimmed, agent_status: true })
+                if (insertErr) throw insertErr
+            }
+
+            // Update local state immediately
+            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, contact_name: trimmed } : r))
+            setEditingId(null)
+        } catch (err) {
+            console.error('Error saving customer name:', err)
+            alert('Failed to save customer name.')
         }
     }
 
@@ -169,10 +282,73 @@ export default function AuctionRequests() {
                                         <h3 className="text-lg font-bold text-gray-800 tracking-tight">
                                             {req.make || 'Unknown Make'} {req.model || 'Unknown Model'}
                                         </h3>
-                                        <div className="flex items-center gap-2 mt-1.5 text-sm text-gray-600 font-medium">
-                                            <User size={14} className="text-gray-400" />
-                                            {req.contact_name || req.phone_number || 'Unknown Customer'}
-                                        </div>
+                                        {(() => {
+                                            const { formatted, Flag, isPhone } = formatPhoneNumber(req.phone_number)
+                                            const hasName = Boolean(req.contact_name)
+
+                                            if (editingId === req.id) {
+                                                return (
+                                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                                        <input
+                                                            type="text"
+                                                            value={tempName}
+                                                            onChange={e => setTempName(e.target.value)}
+                                                            placeholder="Customer name..."
+                                                            className="border border-blue-400 bg-white rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-500/20 w-full max-w-[150px] shadow-sm font-medium"
+                                                            autoFocus
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter') saveContactName(req.id, req.phone_number, tempName)
+                                                                if (e.key === 'Escape') setEditingId(null)
+                                                            }}
+                                                        />
+                                                        <button
+                                                            onClick={() => saveContactName(req.id, req.phone_number, tempName)}
+                                                            className="text-green-600 hover:bg-green-50 p-1 rounded-md transition-colors shadow-sm bg-white border border-green-200"
+                                                            title="Save Name"
+                                                        >
+                                                            <Check size={14} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setEditingId(null)}
+                                                            className="text-red-600 hover:bg-red-50 p-1 rounded-md transition-colors shadow-sm bg-white border border-red-200"
+                                                            title="Cancel"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                )
+                                            }
+
+                                            return (
+                                                <div className="flex flex-col gap-0.5 mt-1.5">
+                                                    <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+                                                        <User size={14} className="text-gray-400 flex-shrink-0" />
+                                                        <span className="truncate max-w-[180px]">
+                                                            {hasName ? req.contact_name : formatted}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => { setEditingId(req.id); setTempName(req.contact_name || ''); }}
+                                                            className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded flex-shrink-0"
+                                                            title={hasName ? "Edit Customer Name" : "Assign Customer Name"}
+                                                        >
+                                                            <Edit2 size={13} />
+                                                        </button>
+                                                    </div>
+                                                    {hasName && req.phone_number && (
+                                                        <div className="flex items-center gap-1 text-xs text-gray-500 pl-5">
+                                                            {Flag && <Flag title={formatted} className="w-3.5 h-2.5 rounded-sm shadow-xs flex-shrink-0" />}
+                                                            <span className="truncate">{formatted}</span>
+                                                        </div>
+                                                    )}
+                                                    {!hasName && isPhone && Flag && (
+                                                        <div className="flex items-center gap-1 text-[11px] text-gray-400 pl-5">
+                                                            <Flag title={formatted} className="w-3.5 h-2.5 rounded-sm shadow-xs flex-shrink-0" />
+                                                            <span>Verified Contact</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+                                        })()}
                                     </div>
                                     <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${req.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                                         {req.status || 'New Lead'}

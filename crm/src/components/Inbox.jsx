@@ -96,14 +96,16 @@ export default function Inbox({ user }) {
         const globalUserSubscription = supabase
             .channel('global:user')
             .on('postgres_changes', {
-                event: 'UPDATE',
+                event: '*',
                 schema: 'public',
                 table: 'user'
             }, payload => {
+                const userRow = payload.new;
+                if (!userRow || !userRow.mobile) return;
                 setSessions(currentSessions => {
                     const updated = currentSessions.map(s => {
-                        if (String(s.id) === String(payload.new.mobile)) {
-                            return { ...s, contact_name: payload.new.contact_name, is_favourite: payload.new.is_favourite }
+                        if (String(s.id) === String(userRow.mobile)) {
+                            return { ...s, contact_name: userRow.contact_name, is_favourite: userRow.is_favourite }
                         }
                         return s
                     })
@@ -117,9 +119,38 @@ export default function Inbox({ user }) {
             })
             .subscribe()
 
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchSessions()
+                fetchGroups()
+                fetchLabels()
+                fetchChatLabels()
+                if (selectedSessionRef.current) {
+                    fetchMessages(selectedSessionRef.current)
+                }
+            }
+        }
+        const handleFocus = () => {
+            fetchSessions()
+            if (selectedSessionRef.current) {
+                fetchMessages(selectedSessionRef.current)
+            }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('focus', handleFocus)
+
+        // 15-second heartbeat
+        const interval = setInterval(() => {
+            fetchSessions()
+        }, 15000)
+
         return () => {
             supabase.removeChannel(sidebarSubscription)
             supabase.removeChannel(globalUserSubscription)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            window.removeEventListener('focus', handleFocus)
+            clearInterval(interval)
         }
     }, [])
 

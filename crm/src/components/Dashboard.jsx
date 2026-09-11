@@ -34,7 +34,49 @@ export default function Dashboard() {
                 setLoading(false)
             }
         }
+
         fetchStats()
+
+        const gokuSub = supabase
+            .channel('dashboard:agent_goku')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'agent_goku' }, () => {
+                fetchStats()
+            })
+            .subscribe()
+
+        const reqSub = supabase
+            .channel('dashboard:auction_requests')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'auction_requests' }, () => {
+                fetchStats()
+            })
+            .subscribe()
+
+        const userSub = supabase
+            .channel('dashboard:user')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'user' }, () => {
+                fetchStats()
+            })
+            .subscribe()
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') fetchStats()
+        }
+        const handleFocus = () => fetchStats()
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('focus', handleFocus)
+
+        // 20-second fallback interval
+        const interval = setInterval(fetchStats, 20000)
+
+        return () => {
+            supabase.removeChannel(gokuSub)
+            supabase.removeChannel(reqSub)
+            supabase.removeChannel(userSub)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            window.removeEventListener('focus', handleFocus)
+            clearInterval(interval)
+        }
     }, [])
 
     if (loading) return <div className="p-8 text-gray-500 flex items-center justify-center h-full">Loading dashboard data...</div>

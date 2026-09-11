@@ -46,8 +46,22 @@ export default function App() {
       })
       .subscribe()
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchLeadsCount()
+    }
+    const handleFocus = () => fetchLeadsCount()
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    // 15-second heartbeat
+    const interval = setInterval(fetchLeadsCount, 15000)
+
     return () => {
       supabase.removeChannel(subscription)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      clearInterval(interval)
     }
   }, [user])
 
