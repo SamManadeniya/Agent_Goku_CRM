@@ -82,8 +82,8 @@ export default function App() {
     <div className="flex flex-col md:flex-row h-[100dvh] w-full bg-gray-100 font-sans overflow-hidden">
       {/* Main Sidebar Navigation */}
       <div className="w-full md:w-20 h-14 md:h-auto bg-gray-900 flex flex-row md:flex-col items-center justify-around md:justify-start py-1 md:py-6 shadow-xl z-20 order-last md:order-first flex-shrink-0">
-        <div className="hidden md:flex w-12 h-12 bg-blue-600 rounded-xl items-center justify-center mb-8 shadow-lg">
-          <Bot size={28} className="text-white" />
+        <div className="hidden md:flex w-12 h-12 bg-gray-950 rounded-xl items-center justify-center mb-8 shadow-lg overflow-hidden border border-gray-800 p-1">
+          <img src="/agent-goku-emblem.png" alt="Agent Goku" className="w-full h-full object-contain" />
         </div>
 
         <div className="flex flex-row md:flex-col gap-2 md:gap-4 flex-1 md:flex-none w-auto md:w-full px-3 justify-center">

@@ -123,8 +123,8 @@ export default function Login({ onLogin }) {
 
             <div className="bg-white/95 backdrop-blur-md p-8 rounded-2xl shadow-2xl max-w-md w-full z-10">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
-                        <Bot size={32} className="text-blue-600" />
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden mb-4 shadow-lg border border-gray-200 bg-[#0b0e17] flex items-center justify-center p-1.5">
+                        <img src="/agent-goku-emblem.png" alt="Agent Goku" className="w-full h-full object-contain" />
                     </div>
                     <h1 className="text-2xl font-bold text-gray-800">Agent Goku CRM</h1>
                     <p className="text-gray-500 text-sm mt-1">{isResetting ? 'Reset your password' : 'Sign in to manage conversations'}</p>
