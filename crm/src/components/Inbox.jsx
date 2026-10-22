@@ -567,20 +567,28 @@ export default function Inbox({ user }) {
 
     async function fetchAgentStatus(mobile) {
         try {
+            const raw = String(mobile || '').trim();
+            const cleanDigits = raw.replace(/\D/g, '');
+            const variants = [raw];
+            if (cleanDigits) {
+                variants.push(cleanDigits);
+                variants.push(`+${cleanDigits}`);
+            }
+
             const { data, error } = await supabase
                 .from('user')
                 .select('agent_status')
-                .eq('mobile', mobile)
-                .maybeSingle()
+                .in('mobile', variants)
+                .order('id', { ascending: false })
+                .limit(1);
 
-            if (error) {
-                console.error('Error fetching agent status:', error)
-                setIsHumanMode(false) // Default to AI if user doesn't exist yet
-            } else if (data) {
-                setIsHumanMode(data.agent_status === false)
+            if (error || !data || data.length === 0) {
+                setIsHumanMode(false); // Default to AI if user doesn't exist yet
+            } else {
+                setIsHumanMode(data[0].agent_status === false);
             }
         } catch (err) {
-            console.error('Error in fetchAgentStatus:', err)
+            console.error('Error in fetchAgentStatus:', err);
         }
     }
 
@@ -707,27 +715,32 @@ export default function Inbox({ user }) {
         const newAgentStatus = isHumanMode ? true : false; // Toggle: Human -> AI (true), AI -> Human (false)
 
         try {
-            const { data: existingUser } = await supabase
-                .from('user')
-                .select('id')
-                .eq('mobile', selectedSession)
-                .maybeSingle();
+            const raw = String(selectedSession).trim();
+            const cleanDigits = raw.replace(/\D/g, '');
+            const variants = [raw];
+            if (cleanDigits) {
+                variants.push(cleanDigits);
+                variants.push(`+${cleanDigits}`);
+            }
 
-            if (existingUser) {
-                const { error } = await supabase
-                    .from('user')
-                    .update({ agent_status: newAgentStatus })
-                    .eq('mobile', selectedSession);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase
+            // Update all variant records in user table so both web and phone keys reflect the status
+            const { data: updated, error: updateError } = await supabase
+                .from('user')
+                .update({ agent_status: newAgentStatus })
+                .in('mobile', variants)
+                .select('id');
+
+            if (updateError) throw updateError;
+
+            // If no existing record was updated, insert a new record
+            if (!updated || updated.length === 0) {
+                await supabase
                     .from('user')
                     .insert({
-                        mobile: selectedSession,
+                        mobile: raw,
                         contact_name: 'Web Visitor',
                         agent_status: newAgentStatus
                     });
-                if (error) throw error;
             }
 
             // Optimistically update UI
