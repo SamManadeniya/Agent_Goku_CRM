@@ -165,15 +165,31 @@ export default function Inbox({ user }) {
             fetchMessages(selectedSession)
             fetchAgentStatus(selectedSession)
 
+            const cleanSelected = String(selectedSession).replace(/^"|"$/g, '').trim();
+            const selectedDigits = cleanSelected.replace(/\D/g, '');
+
             const msgSubscription = supabase
-                .channel('public:agent_goku')
+                .channel(`public:agent_goku:${cleanSelected.replace(/[^a-zA-Z0-9]/g, '_')}`)
                 .on('postgres_changes', {
                     event: 'INSERT',
                     schema: 'public',
-                    table: 'agent_goku',
-                    filter: `session_id=eq.${selectedSession}`
+                    table: 'agent_goku'
                 }, payload => {
-                    setMessages(current => [...current, payload.new])
+                    const row = payload.new;
+                    if (!row || row.session_id === undefined || row.session_id === null) return;
+                    
+                    const rowSId = String(row.session_id).replace(/^"|"$/g, '').trim();
+                    const rowDigits = rowSId.replace(/\D/g, '');
+
+                    const isMatch = (rowSId === cleanSelected) ||
+                        (selectedDigits.length >= 7 && rowDigits.length >= 7 && (rowDigits === selectedDigits || rowDigits.endsWith(selectedDigits) || selectedDigits.endsWith(rowDigits)));
+
+                    if (isMatch) {
+                        setMessages(current => {
+                            if (current.some(m => m.id === row.id)) return current;
+                            return [...current, row];
+                        });
+                    }
                 })
                 .subscribe()
 
@@ -341,18 +357,58 @@ export default function Inbox({ user }) {
 
     async function fetchMessages(sessionId) {
         try {
-            const [res1, res2] = await Promise.all([
-                supabase.from('agent_goku').select('*').eq('session_id', sessionId),
-                supabase.from('agent_goku').select('*').eq('session_id', `"${sessionId}"`)
-            ]);
+            const rawId = String(sessionId).replace(/^"|"$/g, '').trim();
+            const digitsOnly = rawId.replace(/\D/g, '');
+            const queries = [];
 
-            if (res1.error) throw res1.error;
-            if (res2.error) throw res2.error;
+            // 1. Quoted exact rawId (handles web sessions and quoted strings in PostgreSQL json column)
+            queries.push(supabase.from('agent_goku').select('*').eq('session_id', `"${rawId}"`));
 
-            const mergedData = [...res1.data, ...res2.data].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-            setMessages(mergedData);
+            // 2. Pure numeric if rawId is all digits
+            if (/^\d+$/.test(rawId)) {
+                queries.push(supabase.from('agent_goku').select('*').eq('session_id', Number(rawId)));
+            }
+
+            // 3. For phone numbers, search by digit variations
+            if (digitsOnly && digitsOnly.length >= 7) {
+                queries.push(supabase.from('agent_goku').select('*').eq('session_id', Number(digitsOnly)));
+                queries.push(supabase.from('agent_goku').select('*').eq('session_id', `"${digitsOnly}"`));
+                queries.push(supabase.from('agent_goku').select('*').eq('session_id', `"+${digitsOnly}"`));
+
+                // Handle double country code e.g. 9494...
+                if (digitsOnly.length >= 10 && digitsOnly.startsWith('9494')) {
+                    const single = digitsOnly.substring(2);
+                    queries.push(supabase.from('agent_goku').select('*').eq('session_id', Number(single)));
+                    queries.push(supabase.from('agent_goku').select('*').eq('session_id', `"${single}"`));
+                    queries.push(supabase.from('agent_goku').select('*').eq('session_id', `"+${single}"`));
+                }
+            }
+
+            const results = await Promise.all(
+                queries.map(q => Promise.resolve(q).catch(() => ({ data: [] })))
+            );
+
+            let merged = [];
+            results.forEach(res => {
+                if (res && res.data && Array.isArray(res.data)) {
+                    merged = merged.concat(res.data);
+                }
+            });
+
+            // De-duplicate by id
+            const seen = new Set();
+            const unique = [];
+            merged.forEach(m => {
+                if (m && m.id && !seen.has(m.id)) {
+                    seen.add(m.id);
+                    unique.push(m);
+                }
+            });
+
+            unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            setMessages(unique);
         } catch (error) {
-            console.error('Error fetching messages:', error)
+            console.error('Error fetching messages:', error);
         }
     }
 
@@ -1388,8 +1444,8 @@ export default function Inbox({ user }) {
                         </div>
 
                         {/* Chat Input Area */}
-                        {isHumanMode && (
-                            <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-2.5 sm:p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20">
+                        <div className="flex-shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-2.5 sm:p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20">
+                            {isHumanMode ? (
                                 <form onSubmit={handleSendMessage} className="flex items-center gap-2 sm:gap-3 max-w-4xl mx-auto">
                                     <input
                                         type="text"
@@ -1406,8 +1462,22 @@ export default function Inbox({ user }) {
                                         <Send size={18} className="sm:w-[22px] sm:h-[22px] ml-0.5 sm:ml-1" />
                                     </button>
                                 </form>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto py-1 px-2">
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
+                                        <Bot size={18} className="text-blue-500 animate-pulse flex-shrink-0" />
+                                        <span>Agent Kuruma AI is currently managing this conversation automatically.</span>
+                                    </div>
+                                    <button
+                                        onClick={handleTakeover}
+                                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all flex-shrink-0"
+                                    >
+                                        <ShieldAlert size={15} />
+                                        <span>Take Over Chat & Reply</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </>
                 ) : activeTab === 'groups' && selectedGroup ? (
                     <>
