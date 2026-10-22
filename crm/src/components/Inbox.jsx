@@ -589,6 +589,30 @@ export default function Inbox({ user }) {
         setInputText('');
 
         try {
+            const rawSessionId = String(selectedSession).trim();
+            const numericDigits = rawSessionId.replace(/\D/g, '');
+            const isPhoneNumber = numericDigits.length >= 8 && numericDigits.length <= 15 && /^\+?\d+$/.test(rawSessionId);
+
+            // Direct Supabase insert for Web Showroom visitors (instant delivery to web bot chat)
+            if (!isPhoneNumber) {
+                const staffAuthor = user?.username || user?.name || 'Showroom Specialist';
+                const { error: dbError } = await supabase.from('agent_goku').insert({
+                    session_id: rawSessionId,
+                    message: {
+                        type: 'ai',
+                        content: textToSend,
+                        additional_kwargs: {
+                            is_staff: true,
+                            author: staffAuthor,
+                            channel: 'web_showroom'
+                        }
+                    }
+                });
+                if (dbError) throw dbError;
+                return;
+            }
+
+            // For WhatsApp phone contacts, route to backend WhatsApp Cloud API function
             const savedUser = localStorage.getItem('agent_goku_user');
             const token = savedUser ? JSON.parse(savedUser).token : null;
 
@@ -611,6 +635,7 @@ export default function Inbox({ user }) {
             }
         } catch (err) {
             console.error('Error sending message:', err);
+            alert('Error sending message: ' + err.message);
         }
     }
 
