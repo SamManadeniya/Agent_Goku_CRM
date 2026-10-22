@@ -67,6 +67,7 @@ export default function Inbox({ user }) {
         fetchGroups()
         fetchLabels()
         fetchChatLabels()
+        fetchGlobalPauseStatus()
 
         const sidebarSubscription = supabase
             .channel('sidebar:agent_goku')
@@ -102,6 +103,10 @@ export default function Inbox({ user }) {
             }, payload => {
                 const userRow = payload.new;
                 if (!userRow || !userRow.mobile) return;
+                if (userRow.mobile === "__GLOBAL_AGENT_STATUS__") {
+                    setIsGlobalPaused(userRow.agent_status === false);
+                    return;
+                }
                 setSessions(currentSessions => {
                     const updated = currentSessions.map(s => {
                         if (String(s.id) === String(userRow.mobile)) {
@@ -125,6 +130,7 @@ export default function Inbox({ user }) {
                 fetchGroups()
                 fetchLabels()
                 fetchChatLabels()
+                fetchGlobalPauseStatus()
                 if (selectedSessionRef.current) {
                     fetchMessages(selectedSessionRef.current)
                 }
@@ -350,6 +356,21 @@ export default function Inbox({ user }) {
         }
     }
 
+    async function fetchGlobalPauseStatus() {
+        try {
+            const { data, error } = await supabase
+                .from("user")
+                .select("agent_status")
+                .eq("mobile", "__GLOBAL_AGENT_STATUS__")
+                .maybeSingle();
+            if (!error && data) {
+                setIsGlobalPaused(data.agent_status === false);
+            }
+        } catch (err) {
+            console.error("Error fetching global pause status:", err);
+        }
+    }
+
     async function fetchAgentStatus(mobile) {
         try {
             const { data, error } = await supabase
@@ -479,15 +500,31 @@ export default function Inbox({ user }) {
 
     const handleTakeover = async () => {
         if (!selectedSession) return;
-        const newAgentStatus = isHumanMode ? true : false; // Toggle status
+        const newAgentStatus = isHumanMode ? true : false; // Toggle: Human -> AI (true), AI -> Human (false)
 
         try {
-            const { error } = await supabase
+            const { data: existingUser } = await supabase
                 .from('user')
-                .update({ agent_status: newAgentStatus })
-                .eq('mobile', selectedSession);
+                .select('id')
+                .eq('mobile', selectedSession)
+                .maybeSingle();
 
-            if (error) throw error;
+            if (existingUser) {
+                const { error } = await supabase
+                    .from('user')
+                    .update({ agent_status: newAgentStatus })
+                    .eq('mobile', selectedSession);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('user')
+                    .insert({
+                        mobile: selectedSession,
+                        contact_name: 'Web Visitor',
+                        agent_status: newAgentStatus
+                    });
+                if (error) throw error;
+            }
 
             // Optimistically update UI
             setIsHumanMode(!newAgentStatus);
@@ -499,23 +536,45 @@ export default function Inbox({ user }) {
 
     const handleGlobalPauseToggle = async () => {
         const newState = !isGlobalPaused;
-        if (!window.confirm(`Are you sure you want to ${newState ? 'pause' : 'resume'} the AI for ALL chats?`)) return;
+        if (!window.confirm(`Are you sure you want to ${newState ? 'pause' : 'resume'} the AI globally across ALL web bots and WhatsApp?`)) return;
 
         try {
-            // Update all users. agent_status: false means human mode (paused)
-            const { error } = await supabase
+            // 1. Update the master global record in user table
+            const { data: existing } = await supabase
+                .from('user')
+                .select('id')
+                .eq('mobile', '__GLOBAL_AGENT_STATUS__')
+                .maybeSingle();
+
+            if (existing) {
+                const { error: gErr } = await supabase
+                    .from('user')
+                    .update({ agent_status: !newState })
+                    .eq('mobile', '__GLOBAL_AGENT_STATUS__');
+                if (gErr) throw gErr;
+            } else {
+                const { error: gErr } = await supabase
+                    .from('user')
+                    .insert({
+                        mobile: '__GLOBAL_AGENT_STATUS__',
+                        contact_name: 'Global AI System Switch',
+                        agent_status: !newState
+                    });
+                if (gErr) throw gErr;
+            }
+
+            // 2. Also bulk update all users so individual chats reflect the global setting
+            await supabase
                 .from('user')
                 .update({ agent_status: !newState })
-                .neq('mobile', '0'); // Dummy condition to update all rows if needed, or just omit eq
+                .neq('mobile', '0');
 
-            if (error) throw error;
             setIsGlobalPaused(newState);
 
-            // If the current open chat is affected, update its local state
             if (selectedSession) {
                 setIsHumanMode(newState);
             }
-            alert(`AI has been globally ${newState ? 'paused' : 'resumed'}.`);
+            alert(`AI has been globally ${newState ? 'paused' : 'resumed'} for all web and WhatsApp chats.`);
         } catch (err) {
             console.error('Error toggling global pause:', err);
             alert('Failed to update global agent status.');
