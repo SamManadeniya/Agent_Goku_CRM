@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Circular Emblem Clip -->
+    <clipPath id="circle-clip">
+      <circle cx="256" cy="256" r="256" />
+    </clipPath>
+
+    <!-- Union Jack Counterchange Pinwheel Clip -->
+    <clipPath id="uj-counterchange">
+      <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z" />
+    </clipPath>
+
+    <!-- 3D Luxury Glassmorphic Lighting Overlay -->
+    <radialGradient id="emblem-lighting" cx="35%" cy="25%" r="75%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28" />
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.04" />
+      <stop offset="85%" stop-color="#000000" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.65" />
+    </radialGradient>
+
+    <!-- Polished Bezel Gradient -->
+    <linearGradient id="rim-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.75" />
+      <stop offset="40%" stop-color="#38bdf8" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.85" />
+    </linearGradient>
+  </defs>
+
+  <!-- Circular Masked Flag Content -->
+  <g clip-path="url(#circle-clip)">
+    <!-- Australian Naval Blue Background Field -->
+    <circle cx="256" cy="256" r="256" fill="#012169" />
+
+    <!-- UNION JACK CANTON (HOIST UPPER QUARTER) -->
+    <svg x="0" y="0" width="256" height="136" viewBox="0 0 60 30" preserveAspectRatio="none">
+      <!-- St Andrew Saltire White Field -->
+      <path d="M0,0 L60,30 M60,0 L0,30" stroke="#ffffff" stroke-width="6" stroke-linecap="square" />
+      <!-- St Patrick Saltire Red (Geometrically Counterchanged) -->
+      <path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#uj-counterchange)" stroke="#e4002b" stroke-width="4" stroke-linecap="square" />
+      <!-- St George Cross White Border -->
+      <path d="M30,0 v30 M0,15 h60" stroke="#ffffff" stroke-width="10" />
+      <!-- St George Cross Red -->
+      <path d="M30,0 v30 M0,15 h60" stroke="#e4002b" stroke-width="6" />
+    </svg>
+
+    <!-- COMMONWEALTH FEDERATION STAR (7 POINTS) -->
+    <path d="M128.0,294.0 L138.7,327.8 L171.8,315.1 L152.0,344.5 L182.6,362.5 L147.2,365.3 L152.3,400.5 L128.0,374.6 L103.7,400.5 L108.8,365.3 L73.4,362.5 L104.0,344.5 L84.2,315.1 L117.3,327.8 Z"
+          fill="#ffffff"
+          filter="drop-shadow(0 2px 5px rgba(0,0,0,0.4))" />
+
+    <!-- SOUTHERN CROSS CONSTELLATION (CRUX) -->
+    <g fill="#ffffff" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.4))">
+      <!-- Gamma Crucis (Top - 7 Points) -->
+      <path d="M384.0,79.0 L388.9,94.7 L404.3,88.8 L395.1,102.5 L409.3,110.8 L392.9,112.1 L395.3,128.4 L384.0,116.4 L372.7,128.4 L375.1,112.1 L358.7,110.8 L372.9,102.5 L363.7,88.8 L379.1,94.7 Z" />
+
+      <!-- Beta Crucis (Left - 7 Points) -->
+      <path d="M315.0,214.0 L319.9,229.7 L335.3,223.8 L326.1,237.5 L340.3,245.8 L323.9,247.1 L326.3,263.4 L315.0,251.4 L303.7,263.4 L306.1,247.1 L289.7,245.8 L303.9,237.5 L294.7,223.8 L310.1,229.7 Z" />
+
+      <!-- Delta Crucis (Right - 7 Points) -->
+      <path d="M452.0,184.0 L456.9,199.7 L472.3,193.8 L463.1,207.5 L477.3,215.8 L460.9,217.1 L463.3,233.4 L452.0,221.4 L440.7,233.4 L443.1,217.1 L426.7,215.8 L440.9,207.5 L431.7,193.8 L447.1,199.7 Z" />
+
+      <!-- Alpha Crucis (Bottom - 7 Points) -->
+      <path d="M384.0,374.0 L388.9,389.7 L404.3,383.8 L395.1,397.5 L409.3,405.8 L392.9,407.1 L395.3,423.4 L384.0,411.4 L372.7,423.4 L375.1,407.1 L358.7,405.8 L372.9,397.5 L363.7,383.8 L379.1,389.7 Z" />
+
+      <!-- Epsilon Crucis (Small Interior Star - 5 Points) -->
+      <path d="M410.0,274.0 L414.1,284.4 L425.2,285.1 L416.6,292.1 L419.4,302.9 L410.0,296.9 L400.6,302.9 L403.4,292.1 L394.8,285.1 L405.9,284.4 Z" />
+    </g>
+
+    <!-- Luxury Glassmorphic Convex Lens Overlay -->
+    <circle cx="256" cy="256" r="256" fill="url(#emblem-lighting)" />
+  </g>
+
+  <!-- Polished Automotive Chrome/Cyan Ring Bezel -->
+  <circle cx="256" cy="256" r="251" fill="none" stroke="url(#rim-gradient)" stroke-width="10" />
+  <circle cx="256" cy="256" r="255" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="2" />
+</svg>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { MessageSquare, User, Clock, Search, Bot, Send, ShieldAlert, ShieldCheck, Edit2, Star, Check, X, Users, Plus, Tag, Settings, ChevronLeft, Trash2 } from 'lucide-react'
+import { MessageSquare, User, Clock, Search, Bot, Send, ShieldAlert, ShieldCheck, Edit2, Star, Check, X, Users, Plus, Tag, Settings, ChevronLeft, Trash2, Calendar, RefreshCw } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import parsePhoneNumberFromString from 'libphonenumber-js'
@@ -882,7 +882,7 @@ export default function Inbox({ user }) {
             return (
                 <div className="bg-white border border-gray-200/60 text-gray-800 p-4 rounded-2xl rounded-tl-sm shadow-sm w-full transition-all hover:shadow-md">
                     <div className="flex items-center gap-2 mb-2 text-blue-600 font-bold text-xs tracking-wide uppercase">
-                        <Bot size={14} /> Agent Goku
+                        <Bot size={14} /> Agent Kuruma AI
                     </div>
                     <div className="text-[15px] leading-relaxed prose prose-sm prose-blue max-w-none prose-p:my-1 prose-headings:my-2">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayContent}</ReactMarkdown>
@@ -899,6 +899,30 @@ export default function Inbox({ user }) {
                 </div>
             )
         } else {
+            if (displayContent.startsWith('[Booking Request]')) {
+                return (
+                    <div className="bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 text-white p-4 rounded-2xl shadow-lg border border-blue-400/50 w-full max-w-lg my-1">
+                        <div className="flex items-center gap-2 mb-2 text-sky-400 font-bold text-xs tracking-wider uppercase">
+                            <Calendar size={14} /> Drive-Away & Test Drive Booking
+                        </div>
+                        <div className="text-sm font-medium text-slate-100 whitespace-pre-wrap leading-relaxed">
+                            {displayContent.replace('[Booking Request] ', '')}
+                        </div>
+                    </div>
+                )
+            }
+            if (displayContent.startsWith('[Trade-In Request]')) {
+                return (
+                    <div className="bg-gradient-to-br from-amber-950 via-slate-900 to-amber-900 text-white p-4 rounded-2xl shadow-lg border border-amber-400/50 w-full max-w-lg my-1">
+                        <div className="flex items-center gap-2 mb-2 text-amber-400 font-bold text-xs tracking-wider uppercase">
+                            <RefreshCw size={14} /> Trade-In Valuation Request
+                        </div>
+                        <div className="text-sm font-medium text-slate-100 whitespace-pre-wrap leading-relaxed">
+                            {displayContent.replace('[Trade-In Request] ', '')}
+                        </div>
+                    </div>
+                )
+            }
             return (
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-2xl rounded-tr-sm shadow-md w-full">
                     <div className="text-[15px] leading-relaxed whitespace-pre-wrap">{displayContent}</div>
@@ -1092,10 +1116,17 @@ export default function Inbox({ user }) {
                                                     </div>
                                                 )
                                             })()}
-                                            <p className={`text-xs flex items-center gap-1 mt-0.5 ${unreadSessions.has(session.id) ? 'text-blue-600 font-semibold' : 'text-gray-500'}`}>
-                                                <Clock size={12} />
-                                                {new Date(session.lastActive).toLocaleDateString()}
-                                            </p>
+                                            <div className="flex items-center justify-between mt-0.5">
+                                                <p className={`text-xs flex items-center gap-1 ${unreadSessions.has(session.id) ? 'text-blue-600 font-semibold' : 'text-gray-500'}`}>
+                                                    <Clock size={12} />
+                                                    {new Date(session.lastActive).toLocaleDateString()}
+                                                </p>
+                                                {formatPhoneNumber(session.id).isPhone ? (
+                                                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">WhatsApp</span>
+                                                ) : (
+                                                    <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Web Showroom</span>
+                                                )}
+                                            </div>
                                             <div className="flex gap-1.5 mt-2 flex-wrap">
                                                 {chatLabels.filter(cl => cl.session_id === session.id).map(cl => {
                                                     const label = labels.find(l => l.id === cl.label_id)

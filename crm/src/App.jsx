@@ -83,7 +83,7 @@ export default function App() {
       {/* Main Sidebar Navigation */}
       <div className="w-full md:w-20 h-14 md:h-auto bg-gray-900 flex flex-row md:flex-col items-center justify-around md:justify-start py-1 md:py-6 shadow-xl z-20 order-last md:order-first flex-shrink-0">
         <div className="hidden md:flex w-12 h-12 bg-gray-950 rounded-xl items-center justify-center mb-8 shadow-lg overflow-hidden border border-gray-800 p-1">
-          <img src="/agent-goku-emblem.png" alt="Agent Goku" className="w-full h-full object-contain" />
+          <img src="/australia-flag.svg" alt="Aussie Motors" className="w-full h-full object-contain" />
         </div>
 
         <div className="flex flex-row md:flex-col gap-2 md:gap-4 flex-1 md:flex-none w-auto md:w-full px-3 justify-center">
@@ -115,7 +115,7 @@ export default function App() {
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-medium hidden md:block">Leads</span>
+            <span className="text-[10px] font-medium hidden md:block">Bookings</span>
           </button>
 
           <button

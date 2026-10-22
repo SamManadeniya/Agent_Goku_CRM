@@ -124,9 +124,9 @@ export default function Login({ onLogin }) {
             <div className="bg-white/95 backdrop-blur-md p-8 rounded-2xl shadow-2xl max-w-md w-full z-10">
                 <div className="flex flex-col items-center mb-8">
                     <div className="w-16 h-16 rounded-2xl overflow-hidden mb-4 shadow-lg border border-gray-200 bg-[#0b0e17] flex items-center justify-center p-1.5">
-                        <img src="/agent-goku-emblem.png" alt="Agent Goku" className="w-full h-full object-contain" />
+                        <img src="/australia-flag.svg" alt="Aussie Motors" className="w-full h-full object-contain" />
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-800">Agent Goku CRM</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">Aussie Motors CRM</h1>
                     <p className="text-gray-500 text-sm mt-1">{isResetting ? 'Reset your password' : 'Sign in to manage conversations'}</p>
                 </div>
 
@@ -241,8 +241,8 @@ export default function Login({ onLogin }) {
             </div>
 
             <div className="text-center text-sm text-gray-300 space-y-1 mt-8 z-10 drop-shadow-md">
-                <p>&copy; 2025. All rights reserved.</p>
-                <p>Powered by <span className="font-semibold text-white">Manden Cars</span></p>
+                <p>&copy; 2025copy; 2026 Aussie Motors. All rights reserved.</p>
+                <p>Powered by <span className="font-semibold text-white">Agent Kuruma AI • Sydney</span></p>
             </div>
         </div>
     )

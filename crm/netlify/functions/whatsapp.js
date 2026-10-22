@@ -23,17 +23,25 @@ export const handler = async (event, context) => {
     }
 
     try {
-        const body = JSON.parse(event.body);
+        const body = JSON.parse(event.body || '{}');
         const { sessionId, message } = body;
 
         if (!sessionId || !message) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Session ID and message are required' }) };
         }
 
+        const rawSessionId = String(sessionId).trim();
+        const numericDigits = rawSessionId.replace(/\D/g, '');
+        const isPhoneNumber = numericDigits.length >= 8 && numericDigits.length <= 15 && /^\+?\d+$/.test(rawSessionId);
+
         const payload = {
             type: 'ai',
             content: message,
-            additional_kwargs: { is_staff: true, author: user.username }
+            additional_kwargs: {
+                is_staff: true,
+                author: user.username,
+                channel: isPhoneNumber ? 'whatsapp' : 'web_showroom'
+            }
         };
 
         // Initialize Supabase client
@@ -41,19 +49,21 @@ export const handler = async (event, context) => {
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // 1. Save to Supabase
+        // 1. Save to Supabase agent_goku (support both numeric and text session IDs)
+        const formattedSessionId = /^\d+$/.test(rawSessionId) ? Number(rawSessionId) : rawSessionId;
         const { error: dbError } = await supabase.from('agent_goku').insert({
-            session_id: Number(sessionId),
+            session_id: formattedSessionId,
             message: payload
         });
 
         if (dbError) throw dbError;
 
-        // 2. Send to WhatsApp API securely from backend
+        // 2. Send to WhatsApp API securely from backend ONLY if this is a WhatsApp phone session
         const whatsappToken = process.env.VITE_WHATSAPP_ACCESS_TOKEN;
         const phoneId = process.env.VITE_WHATSAPP_PHONE_NUMBER_ID;
 
-        if (whatsappToken && phoneId) {
+        if (isPhoneNumber && whatsappToken && phoneId) {
+            const cleanToNumber = numericDigits;
             const response = await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
                 method: 'POST',
                 headers: {
@@ -63,7 +73,7 @@ export const handler = async (event, context) => {
                 body: JSON.stringify({
                     messaging_product: 'whatsapp',
                     recipient_type: 'individual',
-                    to: sessionId,
+                    to: cleanToNumber,
                     type: 'text',
                     text: { body: message }
                 })
@@ -72,15 +82,19 @@ export const handler = async (event, context) => {
             if (!response.ok) {
                 const result = await response.json();
                 console.error('WhatsApp API Error:', result);
-                return { statusCode: 500, body: JSON.stringify({ error: 'Failed to send WhatsApp message' }) };
+                return { statusCode: 500, body: JSON.stringify({ error: 'Failed to send WhatsApp message', details: result }) };
             }
-        } else {
-            console.warn('WhatsApp credentials not configured in backend');
         }
 
-        return { statusCode: 200, body: JSON.stringify({ success: true }) };
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                success: true,
+                channel: isPhoneNumber ? 'whatsapp' : 'web_showroom'
+            })
+        };
     } catch (err) {
         console.error('Send message error:', err);
-        return { statusCode: 500, body: JSON.stringify({ error: 'An internal error occurred' }) };
+        return { statusCode: 500, body: JSON.stringify({ error: 'An internal error occurred: ' + err.message }) };
     }
 };
