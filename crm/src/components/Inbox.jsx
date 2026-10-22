@@ -674,22 +674,32 @@ export default function Inbox({ user }) {
     }
 
     const formatPhoneNumber = (phoneStr) => {
+        if (!phoneStr) return { formatted: '', country: null, Flag: null, isPhone: false };
+        const cleanStr = String(phoneStr).trim();
         try {
-            const withPlus = phoneStr.startsWith('+') ? phoneStr : `+${phoneStr}`
-            const phoneNumber = parsePhoneNumberFromString(withPlus)
-            if (phoneNumber) {
-                const country = phoneNumber.country
-                const Flag = country ? Flags[country] : null
+            const withPlus = cleanStr.startsWith('+') ? cleanStr : `+${cleanStr}`;
+            const phoneNumber = parsePhoneNumberFromString(withPlus);
+            if (phoneNumber && phoneNumber.isValid()) {
+                const country = phoneNumber.country;
+                const Flag = country ? Flags[country] : null;
                 return {
                     formatted: phoneNumber.formatInternational(),
                     country,
-                    Flag
-                }
+                    Flag,
+                    isPhone: true
+                };
             }
         } catch (e) {
             // ignore
         }
-        return { formatted: phoneStr, country: null, Flag: null }
+        const cleanDigits = cleanStr.replace(/\D/g, '');
+        const isLikelyPhone = cleanDigits.length >= 8 && !cleanStr.includes('web') && !cleanStr.includes('-');
+        return { 
+            formatted: cleanStr.startsWith('kuruma_web_') ? `Web Visitor (${cleanStr.slice(-6)})` : cleanStr, 
+            country: null, 
+            Flag: null, 
+            isPhone: isLikelyPhone 
+        };
     }
 
     const handleTakeover = async () => {
