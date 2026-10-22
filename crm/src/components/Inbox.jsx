@@ -1,10 +1,148 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { MessageSquare, User, Clock, Search, Bot, Send, ShieldAlert, ShieldCheck, Edit2, Star, Check, X, Users, Plus, Tag, Settings, ChevronLeft, Trash2, Calendar, RefreshCw } from 'lucide-react'
+import { MessageSquare, User, Clock, Search, Bot, Send, ShieldAlert, ShieldCheck, Edit2, Star, Check, X, Users, Plus, Tag, Settings, ChevronLeft, Trash2, Calendar, RefreshCw, ExternalLink } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import parsePhoneNumberFromString from 'libphonenumber-js'
 import * as Flags from 'country-flag-icons/react/3x2'
+
+
+function parseVehicleMatch(content) {
+    if (!content || typeof content !== 'string') return null;
+    const hasVehicleIndicator = content.includes('Vehicle Match') || 
+                                ((content.includes('Car:') || content.includes('*Car:*')) && 
+                                 (content.includes('Auction Link') || content.includes('http')));
+    if (!hasVehicleIndicator) return null;
+
+    const lines = content.split('\n');
+    const data = {};
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        const m = trimmed.match(/^\*?([A-Za-z\s]+?)\*?:\s*(.+)$/);
+        if (m) {
+            const key = m[1].replace(/\*/g, '').trim().toLowerCase();
+            const val = m[2].replace(/\*/g, '').trim();
+            if (key === 'car') data.car = val;
+            else if (key === 'year') data.year = val;
+            else if (key === 'mileage') data.mileage = val;
+            else if (key === 'grade' || key === 'auction grade') data.grade = val;
+            else if (key === 'color' || key === 'colour') data.color = val;
+            else if (key === 'transmission') data.transmission = val;
+            else if (key === 'price' || key === 'estimated price') data.price = val;
+        }
+    }
+
+    const linkMatch = content.match(/https?:\/\/[^\s\)\>]+/);
+    const link = linkMatch ? linkMatch[0].trim() : null;
+
+    if (!data.car && !data.price && !link) return null;
+
+    let greeting = null;
+    const greetingMatch = content.match(/Hi\s+[^,]+,\s*we found[^:\n]+/i);
+    if (greetingMatch) greeting = greetingMatch[0].trim();
+
+    let note = null;
+    if (link) {
+        const afterLink = content.slice(content.indexOf(link) + link.length).trim();
+        if (afterLink) {
+            note = afterLink.replace(/^[-_\s]+/, '').trim();
+        }
+    }
+
+    return { ...data, link, greeting, note };
+}
+
+function VehicleMatchCard({ vehicle }) {
+    return (
+        <div className="bg-white border border-blue-200/90 rounded-2xl rounded-tl-sm p-4 sm:p-5 shadow-sm hover:shadow-md transition-all w-full max-w-lg">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2 text-blue-600 font-bold text-xs tracking-wider uppercase">
+                    <Bot size={15} className="text-blue-500" />
+                    <span>Agent Kuruma AI</span>
+                </div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-xs">
+                    <span>🚗</span> Vehicle Match
+                </span>
+            </div>
+
+            {vehicle.greeting && (
+                <p className="text-xs font-medium text-gray-600 mb-2.5 leading-relaxed">
+                    {vehicle.greeting}
+                </p>
+            )}
+
+            {vehicle.car && (
+                <div className="mb-3.5">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Matched Vehicle</span>
+                    <h4 className="text-base sm:text-lg font-bold text-gray-900 leading-snug">
+                        {vehicle.car}
+                    </h4>
+                </div>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3.5">
+                {vehicle.year && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Year</span>
+                        <span className="text-xs sm:text-sm font-bold text-gray-800">{vehicle.year}</span>
+                    </div>
+                )}
+                {vehicle.mileage && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Mileage</span>
+                        <span className="text-xs sm:text-sm font-bold text-gray-800">{vehicle.mileage}</span>
+                    </div>
+                )}
+                {vehicle.grade && (
+                    <div className="bg-amber-50/70 border border-amber-200/70 rounded-xl p-2.5">
+                        <span className="text-[10px] text-amber-700 font-semibold uppercase tracking-wider block mb-0.5">Grade</span>
+                        <span className="text-xs sm:text-sm font-bold text-amber-900">⭐ {vehicle.grade}</span>
+                    </div>
+                )}
+                {vehicle.color && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Color</span>
+                        <span className="text-xs sm:text-sm font-bold text-gray-800 truncate block">{vehicle.color}</span>
+                    </div>
+                )}
+                {vehicle.transmission && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Gearbox</span>
+                        <span className="text-xs sm:text-sm font-bold text-gray-800">{vehicle.transmission}</span>
+                    </div>
+                )}
+                {vehicle.price && (
+                    <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+                        <span className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wider block mb-0.5">Price</span>
+                        <span className="text-xs sm:text-sm font-bold text-emerald-800">{vehicle.price}</span>
+                    </div>
+                )}
+            </div>
+
+            {vehicle.link && (
+                <div className="my-3">
+                    <a
+                        href={vehicle.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-md shadow-blue-600/20 hover:shadow-lg hover:shadow-blue-600/30 hover:-translate-y-0.5 active:translate-y-0 group no-underline"
+                    >
+                        <ExternalLink size={15} className="group-hover:scale-110 transition-transform flex-shrink-0" />
+                        <span className="tracking-wide">View Auction Sheet on Nichibo Japan ↗</span>
+                    </a>
+                </div>
+            )}
+
+            {vehicle.note && (
+                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-start gap-1.5 text-xs text-gray-600 font-medium">
+                    <span className="text-blue-500 font-bold">💬</span>
+                    <p className="leading-relaxed">{vehicle.note}</p>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function Inbox({ user }) {
     const [sessions, setSessions] = useState([])
@@ -1019,13 +1157,43 @@ export default function Inbox({ user }) {
         }
 
         if (isAI) {
+            const vehicleMatch = parseVehicleMatch(displayContent);
+            if (vehicleMatch) {
+                return <VehicleMatchCard vehicle={vehicleMatch} />;
+            }
+
             return (
-                <div className="bg-white border border-gray-200/60 text-gray-800 p-4 rounded-2xl rounded-tl-sm shadow-sm w-full transition-all hover:shadow-md">
-                    <div className="flex items-center gap-2 mb-2 text-blue-600 font-bold text-xs tracking-wide uppercase">
-                        <Bot size={14} /> Agent Kuruma AI
+                <div className="bg-white border border-gray-200/70 text-gray-800 p-4 sm:p-5 rounded-2xl rounded-tl-sm shadow-sm w-full transition-all hover:shadow-md">
+                    <div className="flex items-center gap-2 mb-2 text-blue-600 font-bold text-xs tracking-wider uppercase">
+                        <Bot size={14} className="text-blue-500" />
+                        <span>Agent Kuruma AI</span>
                     </div>
-                    <div className="text-[15px] leading-relaxed prose prose-sm prose-blue max-w-none prose-p:my-1 prose-headings:my-2">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayContent}</ReactMarkdown>
+                    <div className="text-[14px] sm:text-[15px] leading-relaxed prose prose-sm prose-blue max-w-none prose-p:my-1.5 prose-headings:my-2">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                a: ({ href, children, ...props }) => {
+                                    const isUrlChild = typeof children === 'string' && (children.startsWith('http://') || children.startsWith('https://'));
+                                    const label = isUrlChild
+                                        ? (href && (href.includes('nichibojapan') || href.includes('auction')) ? 'View Auction Sheet ↗' : 'Open Link ↗')
+                                        : children;
+                                    return (
+                                        <a
+                                            href={href}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200 transition-all my-1.5 break-all no-underline shadow-xs hover:shadow group"
+                                            {...props}
+                                        >
+                                            <ExternalLink size={13} className="shrink-0 text-blue-500 group-hover:scale-110 transition-transform" />
+                                            <span className="truncate max-w-xs sm:max-w-md">{label}</span>
+                                        </a>
+                                    );
+                                }
+                            }}
+                        >
+                            {displayContent}
+                        </ReactMarkdown>
                     </div>
                 </div>
             )
@@ -1182,7 +1350,7 @@ export default function Inbox({ user }) {
                                     </button>
                                 </div>
                             )}
-                            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
+                            <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-hide no-scrollbar -mx-1 px-1">
                                 <button
                                     onClick={() => setSelectedLabelFilter(null)}
                                     className={`whitespace-nowrap px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 ${selectedLabelFilter === null ? 'bg-gray-800 text-white shadow-md shadow-gray-800/20' : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200/60'}`}
@@ -1355,14 +1523,14 @@ export default function Inbox({ user }) {
                                                     {Flag && <Flag title={formatted} className="w-5 h-3.5 md:w-6 md:h-4 rounded-sm shadow-sm flex-shrink-0" />}
                                                     <span className="truncate">{sessionData?.contact_name || formatted}</span>
                                                 </h2>
-                                                <button onClick={() => { setTempName(sessionData?.contact_name || ''); setEditingName(true); }} className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 flex-shrink-0" title="Edit Name">
-                                                    <Edit2 size={13} className="md:w-3.5 md:h-3.5" />
+                                                <button onClick={() => { setTempName(sessionData?.contact_name || ''); setEditingName(true); }} className="text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors p-1 flex-shrink-0" title="Edit Name">
+                                                    <Edit2 size={14} className="md:w-4 md:h-4" />
                                                 </button>
-                                                <button onClick={() => toggleFavourite(selectedSession, sessionData?.is_favourite)} className={`transition-colors p-0.5 flex-shrink-0 ${sessionData?.is_favourite ? 'text-yellow-400 drop-shadow-sm' : 'text-gray-300 hover:text-yellow-400'}`} title="Favorite">
+                                                <button onClick={() => toggleFavourite(selectedSession, sessionData?.is_favourite)} className={`transition-colors p-1 rounded-lg hover:bg-gray-100 flex-shrink-0 ${sessionData?.is_favourite ? 'text-yellow-400 drop-shadow-sm' : 'text-gray-300 hover:text-yellow-400'}`} title="Favorite">
                                                     <Star size={16} className="md:w-[18px] md:h-[18px]" fill={sessionData?.is_favourite ? "currentColor" : "none"} />
                                                 </button>
                                                 <div className="relative flex-shrink-0">
-                                                    <button onClick={() => setIsAssigningLabel(!isAssigningLabel)} className="text-gray-400 hover:text-blue-600 transition-colors p-0.5" title="Labels">
+                                                    <button onClick={() => setIsAssigningLabel(!isAssigningLabel)} className="text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors p-1" title="Labels">
                                                         <Tag size={15} className="md:w-4 md:h-4" />
                                                     </button>
                                                     {isAssigningLabel && (
@@ -1398,22 +1566,22 @@ export default function Inbox({ user }) {
                             </div>
 
                             {/* Actions */}
-                            <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+                            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                                 <button
                                     onClick={handleDeleteChat}
-                                    className="p-1.5 md:p-2.5 text-red-500 hover:bg-red-50 rounded-lg md:rounded-xl transition-colors shadow-sm border border-red-100 flex-shrink-0"
+                                    className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg md:rounded-xl transition-colors shadow-xs border border-red-100 flex-shrink-0"
                                     title="Delete Chat"
                                 >
                                     <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
                                 </button>
                                 <button
                                     onClick={handleTakeover}
-                                    className={`px-2.5 py-1.5 md:px-5 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold flex items-center gap-1 md:gap-2 transition-all duration-200 shadow-sm whitespace-nowrap flex-shrink-0 ${isHumanMode ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-amber-200/50' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/30'}`}
+                                    className={`h-9 md:h-10 px-3 md:px-5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 md:gap-2 transition-all duration-200 shadow-xs whitespace-nowrap flex-shrink-0 ${isHumanMode ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200/80 shadow-amber-200/50' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/25 hover:shadow-md hover:shadow-blue-600/35'}`}
                                 >
                                     {isHumanMode ? (
-                                        <><ShieldCheck size={15} className="md:w-[18px] md:h-[18px]" /> <span>Resume AI</span></>
+                                        <><ShieldCheck size={16} className="md:w-[18px] md:h-[18px] text-amber-700" /> <span>Resume AI</span></>
                                     ) : (
-                                        <><ShieldAlert size={15} className="md:w-[18px] md:h-[18px]" /> <span className="hidden sm:inline">Take Over Chat</span><span className="sm:hidden">Take Over</span></>
+                                        <><ShieldAlert size={16} className="md:w-[18px] md:h-[18px]" /> <span className="hidden sm:inline">Take Over Chat</span><span className="sm:hidden">Take Over</span></>
                                     )}
                                 </button>
                             </div>
@@ -1452,25 +1620,32 @@ export default function Inbox({ user }) {
                                         value={inputText}
                                         onChange={(e) => setInputText(e.target.value)}
                                         placeholder="Type a message to the client..."
-                                        className="flex-1 bg-gray-100 border border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3.5 outline-none transition-all shadow-inner text-sm sm:text-base"
+                                        className="flex-1 bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 outline-none transition-all shadow-inner text-sm sm:text-base text-gray-800 placeholder:text-gray-400"
                                     />
                                     <button
                                         type="submit"
                                         disabled={!inputText.trim()}
-                                        className="w-10 h-10 sm:w-14 sm:h-14 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl sm:rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0 flex-shrink-0"
+                                        className="h-11 w-11 sm:h-12 sm:w-12 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none text-white rounded-xl sm:rounded-2xl flex items-center justify-center transition-all shadow-md shadow-blue-600/25 hover:shadow-lg hover:shadow-blue-600/35 hover:-translate-y-0.5 active:translate-y-0 flex-shrink-0"
+                                        title="Send Message"
                                     >
-                                        <Send size={18} className="sm:w-[22px] sm:h-[22px] ml-0.5 sm:ml-1" />
+                                        <Send size={18} className="sm:w-[20px] sm:h-[20px] ml-0.5" />
                                     </button>
                                 </form>
                             ) : (
-                                <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto py-1 px-2">
-                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
-                                        <Bot size={18} className="text-blue-500 animate-pulse flex-shrink-0" />
-                                        <span>Agent Kuruma AI is currently managing this conversation automatically.</span>
+                                <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-blue-50/80 border border-blue-100 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row items-center justify-between gap-3 max-w-4xl mx-auto shadow-xs">
+                                    <div className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-600 font-medium">
+                                        <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600"></span>
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            <Bot size={16} className="text-blue-600 flex-shrink-0" />
+                                            <span>Agent Kuruma AI is currently managing this conversation automatically.</span>
+                                        </div>
                                     </div>
                                     <button
                                         onClick={handleTakeover}
-                                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all flex-shrink-0"
+                                        className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20 hover:shadow-lg hover:shadow-blue-600/30 transition-all flex-shrink-0 active:scale-95"
                                     >
                                         <ShieldAlert size={15} />
                                         <span>Take Over Chat & Reply</span>
